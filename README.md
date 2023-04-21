@@ -7,15 +7,15 @@ The process is divided into three steps:
 2. The extracted text is chunked by nltk and stored in Weaviate, which handles the ada-002 embeddings using OpenAI's APIs. During this indexing step, a back-of-the-book index is also created, and the keyterms are stored in an inverted index FeatureBase along with the text chunk UUID from Weaviate.
 3. During interactions with the LLM, Weaviate and FeatureBase are used together to determine the most relevant text to use for building prompts. Texts are passed around as documents and augmented with queries to the LLM as well as any documents that are related through the inverted index.
 
-##Theory of Operation
+## Theory of Operation
 DocGPT uses PyPDF2 and pdf2image to process PDFs into images, and Google Vision is used to extract text from these images. The extracted text is chunked using nltk and stored in Weaviate, which handles the ada-002 embeddings using OpenAI's APIs. During indexing, a back-of-the-book index is created using FeatureBase, and keyterms are stored in an inverted index along with the text chunk UUID from Weaviate.
 
 During interactions with the LLM, DocGPT uses Weaviate and FeatureBase together to determine the most relevant text to use for building prompts. Texts are passed around as documents and augmented with queries to the LLM as well as any documents that are related through the inverted index.
 
-##Setup
+## Setup
 To use Weaviate and FeatureBase with DocGPT, you will need to set up accounts with their respective cloud providers. Follow the instructions below to get started:
 
-###Weaviate Cloud Setup
+### Weaviate Cloud Setup
 Go to the Weaviate Cloud website and sign up for an account.
 
 Once you have signed up, you will be taken to the dashboard. Click on the "Create Weaviate Cluster" button to create a new cluster.

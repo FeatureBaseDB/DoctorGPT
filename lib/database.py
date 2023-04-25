@@ -112,6 +112,23 @@ def weaviate_update(document, collection):
 	return data_uuid
 
 
+def weaviate_object(uuid, collection):
+	# connect to weaviate
+	weaviate_client = weaviate.Client(
+		url = config.weaviate_endpoint,
+		additional_headers = {
+			"X-OpenAI-Api-Key": config.openai_token,
+			"Authorization": "Bearer %s" % config.weaviate_token 
+		}
+	)
+	document = weaviate_client.data_object.get_by_id(
+	  uuid,
+	  class_name=collection,
+	  consistency_level=weaviate.data.replication.ConsistencyLevel.ONE
+	)
+
+	return(document)
+
 # query weaviate for matches
 def weaviate_query(concepts, collection, fields):
 	# connect to weaviate

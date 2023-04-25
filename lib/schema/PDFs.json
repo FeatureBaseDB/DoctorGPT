@@ -1,0 +1,55 @@
+{"classes": [
+    {
+        "class": "PDFs",
+        "vectorIndexConfig": {
+            "vectorCacheMaxObjects": 100000,
+            "ef": 2500
+        },
+        "moduleConfig": {
+            "text2vec-openai": {
+                "model": "ada",
+                "modelVersion": "002",
+                "type": "text"
+            }
+        },
+        "vectorizer": "text2vec-openai",
+        "properties": [
+            {
+                "dataType": [
+                    "string"
+                ],
+                "name": "filename",
+                "moduleConfig": {
+                    "text2vec-openai": {
+                        "skip": true,
+                        "vectorizePropertyName": false
+                    }
+                }
+            },
+            {
+                "dataType": [
+                    "int"
+                ],
+                "name": "page_number",
+                "moduleConfig": {
+                    "text2vec-openai": {
+                        "skip": true,
+                        "vectorizePropertyName": false
+                    }
+                }
+            },
+            {
+                "dataType": [
+                    "string"
+                ],
+                "name": "fragment",
+                "moduleConfig": {
+                    "text2vec-openai": {
+                        "skip": false,
+                        "vectorizePropertyName": false
+                    }
+                }
+            }
+        ]
+    }
+]}

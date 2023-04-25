@@ -1,0 +1,4 @@
+config.py
+images/*
+__pycache__/
+*.py[cod]

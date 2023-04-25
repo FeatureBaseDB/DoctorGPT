@@ -1,4 +1,4 @@
-# DocGPT - Advanced LLM Prompting for PDFs and Webpages
+# DocGPT - Advanced LLM Prompting for PDFs 📝💻🔍📑🌐📚💡
 DocGPT is a repository on Github that provides advanced LLM prompting for PDFs and webpages. The repository uses various tools such as PyPDF2 and pdf2image for PDF processing, Google Vision for text extraction from images, nltk for text fragment/chunk extraction, Weaviate for dense vector search and embedding handling, and FeatureBase for extracted back of the book indexing and graph traversal.
 
 The project is installed, configured and run locally from the command line. You will need a Google Vision account, a FeatureBase cloud account and a Weaviate cloud account to run the code.

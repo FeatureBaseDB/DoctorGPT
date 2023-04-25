@@ -64,6 +64,13 @@ pdfReader = PyPDF2.PdfReader(pdfFileObj)
 # number of pages in pdf file 
 num_pages = len(pdfReader.pages)
 
+# images directory
+if not os.path.exists("images"):
+    os.makedirs("images")
+    print(f"Directory 'images' created successfully!")
+else:
+    print(f"Directory 'images' already exists.")
+
 # convert PDF
 images = convert_from_path('documents/%s' % filename)
 
@@ -90,7 +97,9 @@ from google.cloud import vision
 import io
 client = vision.ImageAnnotatorClient()
 
-for num_page in range(107, num_pages):
+# loop through pages
+start_page = 0
+for num_page in range(start_page, num_pages):
 	# open image
 	with io.open(f'{new_dir_path}/page%s.jpg' % num_page, 'rb') as image_file:
 		content = image_file.read()

@@ -18,6 +18,10 @@ from lib.database import featurebase_query
 
 import config
 
+# supress OpenAI resource warnings for unclosed sockets
+import warnings
+warnings.filterwarnings("ignore")
+
 # AI model call by method name
 models = {}
 model = lambda f: models.setdefault(f.__name__, f)
@@ -30,7 +34,6 @@ def ai(model_name="none", document={}):
 		# rewrite to match document flow
 		document['error'] = "model %s errors with no token." % (model_name)
 		document['explain'] = "I encountered an error talking with OpenAI."
-		document['template_file'] = "eject_document"
 		return document
 	else:
 		# set token for model to use
@@ -47,7 +50,6 @@ def ai(model_name="none", document={}):
 
 		document['error'] = "model *%s* errors with %s." % (model_name, ex)
 		document['explain'] = "I encountered an error talking with my AI handler."
-		document['template_file'] = "eject_document"
 		return document
 
 
@@ -88,7 +90,7 @@ def gpt3_embedding(content, engine='text-similarity-ada-001'):
 def gpt_chat_keywords(words):
 	try:
 		completion = openai.ChatCompletion.create(
-		  model="gpt-4",
+		  model = config.model,
 		  messages = [
 			{"role": "system", "content": "You complete python lists from a fragment of a document. Don't create numeric keywords or use URLs for keywords. Don't use stopwords or words that aren't relevant to the document."},
 			{"role": "user", "content": "fragment: '''"+words+"'''\n# create a python list of ten (10) keyterms for a back of book index\nkeyterms = ["}
@@ -104,7 +106,7 @@ def gpt_chat_keywords(words):
 
 
 # completion
-def gpt3_completion(prompt, temperature=0.95, max_tokens=256, top_p=1, fp=0, pp=0):
+def gpt3_completion(prompt, temperature=0.95, max_tokens=512, top_p=1, fp=0, pp=0):
 	try:
 		# call to OpenAI completions
 		response = openai.Completion.create(
@@ -128,7 +130,6 @@ def gpt3_dict_completion(prompt, temperature=0.90, max_tokens=256, top_p=1, fp=0
 	answer = gpt3_completion(prompt, temperature, max_tokens, top_p, fp, pp)
 	
 	try:
-		print(answer.replace('\n', ""))
 		python_dict = eval('{%s' % answer.replace('\n', ""))
 	except Exception as ex:
 		python_dict = {}
@@ -142,23 +143,72 @@ def gpt3_dict_completion(prompt, temperature=0.90, max_tokens=256, top_p=1, fp=0
 # model functions
 # ===============
 
-# mirror text for indexing
+# keyterms and questions
 @model
-def gpt_keywords(document):
+def gpt_keyterms(document):
+	# load openai key then drop it from the document
 	# load openai key then drop it from the document
 	openai.api_key = document.get('openai_token')
 	document.pop('openai_token', None)
 
-	for attempt in range(4):
-		try:
-			answer = gpt_chat_keywords(document.get('words')).get('content', "").replace('\n', "")
-			python_array = eval("[%s" % answer)
-			break
-		except Exception as ex:
-			print("Forcing GPT to output a valid Python array...")
-			python_array = ['error']
+	# substitute things
+	template = load_template("get_terms_questions")
+	prompt = template.substitute(document)
+	
+	ai_dict = gpt3_dict_completion(prompt)
 
-	return python_array
+	document.setdefault('keyterms', ai_dict.get('keyterms'))
+	document.setdefault('question', ai_dict.get('question'))
+	document.setdefault('error', ai_dict.get('error', None))
+
+	return document
+
+@model
+def get_title(document):
+	# load openai key then drop it from the document
+	openai.api_key = document.get('openai_token')
+	document.pop('openai_token', None)
+
+	# substitute things
+	template = load_template("get_title")
+	prompt = template.substitute(document)
+	
+	try:
+		document.setdefault('title', gpt3_dict_completion(prompt).get('title'))
+	except Exception as ex:
+		document.setdefault('title', None)
+
+	return document
+
+
+@model
+def answer_question(document):
+	# load openai key then drop it from the document
+	openai.api_key = document.get('openai_token')
+	document.pop('openai_token', None)
+
+	# substitute things
+	template = load_template("answer_question")
+	prompt = template.substitute(document)
+	
+	gpt_document = gpt3_dict_completion(prompt)
+
+	try:
+		document.setdefault('answer', gpt_document.get('answer'))
+	except Exception as ex:
+		document.setdefault('answer', None)
+
+	try:
+		document.setdefault('probability', gpt_document.get('probability').strip())
+	except Exception as ex:
+		document.setdefault('probability', "🤔")
+
+	try:
+		document.setdefault('dimensionality', gpt_document.get('dimensionality').strip())
+	except Exception as ex:
+		document.setdefault('dimensionality', "🔍")
+
+	return document
 
 
 @model
@@ -168,10 +218,29 @@ def ask_gpt(document):
 	document.pop('openai_token', None)
 
 	# substitute things
-	template = load_template("chat")
+	template = load_template("document_conversation")
 	prompt = template.substitute(document)
 
-	answer = gpt3_completion(prompt).strip('\n').strip('"')
-	document['answer'] = answer
+	gpt_document = gpt3_dict_completion(prompt)
+
+	try:
+		document.setdefault('answer', gpt_document.get('answer'))
+	except Exception as ex:
+		document.setdefault('answer', None)
+
+	try:
+		document.setdefault('keyterms', gpt_document.get('keyterms')[:3])
+	except Exception as ex:
+		document.setdefault('keyterms', [])
+
+	try:
+		document.setdefault('probability', gpt_document.get('probability').strip())
+	except Exception as ex:
+		document.setdefault('probability', "🤔")
+
+	try:
+		document.setdefault('dimensionality', gpt_document.get('dimensionality').strip())
+	except Exception as ex:
+		document.setdefault('dimensionality', "🔍")
 
 	return document

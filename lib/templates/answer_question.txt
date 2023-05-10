@@ -1,0 +1,24 @@
+1. Read the content in step 2 and build a python dictionary to answer the question in step 3.
+2. The the PDF titled "$title" contains the following:
+"""
+$text
+"""
+3. Output a python dictionary for the answer:
+# python dict with the query, answer and possible sentiment of a PDF
+# "🤔" (10% probability that the answer is correct)
+# "😕" (30% probability)
+# "😐" (50%)
+# "🙂" (70%)
+# "😃" (90%)
+# "😄" (95%)
+# "🎉" (99% probability that the answer is correct)
+# "🔍" (Answer dimensionality is uncertain and requires further investigation)
+# "📉" (dimensionality is disappointing and contradicts expectations)
+# "🤷‍♂️" (neutral and leaves the questioner unsure)
+# "💡" (logical and well-founded)
+# "📚" (informative and enlightening)
+# "💯" (factual and accurate)
+# "🔬" (Answer dimensionality is groundbreaking and scientifically supported)
+
+# pdf_meta = {"query": "Who is Winnie-the-Pooh?", "answer": "Winnie-the-Pooh is a fictional stuffed bear who loves honey.", "probability": "😄", "dimensionality": "📚"}
+pdf_meta = {"query": "$query",

@@ -27,6 +27,14 @@ def random_string(size=6, chars=string.ascii_letters + string.digits):
 ###############
 # FeatureBase #
 ###############
+def apply_schema(list_of_lists, schema):
+	result = []
+	for row in list_of_lists:
+		dict_row = {}
+		for i, val in enumerate(row):
+			dict_row[schema[i]] = val
+		result.append(dict_row)
+	return result
 
 # "sql" key in document should have a valid query
 def featurebase_query(document):
@@ -42,6 +50,7 @@ def featurebase_query(document):
 				'X-API-Key': '%s' % config.featurebase_token,
 			}
 		).json()
+
 	except Exception as ex:
 		# bad query?
 		exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -58,10 +67,17 @@ def featurebase_query(document):
 		# got some data back from featurebase
 		document['data'] = result.get('data')
 		document['schema'] = result.get('schema')
+
+		field_names = []
+
+		for field in result.get('schema').get('fields'):
+			field_names.append(field.get('name'))
+
+		document['results'] = apply_schema(result.get('data'), field_names)
 	
 	else:
 		document['explain'] = "Query was successful, but returned no data."
-	
+
 	return document
 
 
@@ -81,7 +97,7 @@ def weaviate_schema(schema="none"):
 
 	# connect to weaviate and ensure schema exists
 	try:
-		return weaviate_client.schema.get(schema)
+		schema = weaviate_client.schema.get(schema)
 	
 	except Exception as ex:
 		print("Trying to create schema: %s" % schema)
@@ -90,11 +106,12 @@ def weaviate_schema(schema="none"):
 			dir_path = os.path.dirname(os.path.realpath(__file__))
 			schema_file = os.path.join(dir_path, "schema/%s.json" % schema)
 			weaviate_client.schema.create(schema_file)
-			return weaviate_client.schema.get(schema)
+			schema = weaviate_client.schema.get(schema)
 		except Exception as ex:
 			print(ex)
-			return {"error": "no schema"}
+			schema = {"error": "no schema"}
 
+	return schema
 
 # send a document to a class/collection
 def weaviate_update(document, collection):
@@ -130,7 +147,7 @@ def weaviate_object(uuid, collection):
 	return(document)
 
 # query weaviate for matches
-def weaviate_query(concepts, collection, fields):
+def weaviate_query(concepts, collection, fields, move_tos=[]):
 	# connect to weaviate
 	weaviate_client = weaviate.Client(
 		url = config.weaviate_endpoint,
@@ -142,20 +159,20 @@ def weaviate_query(concepts, collection, fields):
 
 	nearText = {
 	  "concepts": concepts,
-	  "moveAwayFrom": {
-	  	"concepts": "All rights reserved table of contents next steps copyright",
-	  	"force": 2.0
+	  "moveTo": {
+	  	"concepts": move_tos,
+	  	"force": 0.5
 	  }
-	  #"distance": distance,
 	}
 
 	# fetch result and fields
 	result = (
-	  weaviate_client.query
-	  .get(collection, fields)
-	  .with_additional(["certainty", "distance", "id"])
-	  .with_near_text(nearText)
-	  .do()
+		weaviate_client.query
+		.get(collection, fields)
+		.with_near_text(nearText)
+		.with_additional(["certainty", "distance", "id"])
+		.with_limit(20)
+		.do()
 	)
 
 	_records = []

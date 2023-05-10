@@ -1,11 +1,13 @@
 import time
 import sys
 import os
+import hashlib
 
 import PyPDF2
 from pdf2image import convert_from_path
 
 import nltk
+
 
 # tokenizer
 nltk.download('punkt')
@@ -13,27 +15,12 @@ tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
 print("Tokenizer loaded...")
 
 from lib.ai import ai
-
 from lib.database import featurebase_query
-
-# create FeatureBase database
-fb_table = "doc_keyterms"
-fb_query = featurebase_query(
-	{
-		"sql": "CREATE TABLE %s (_id string, filename string, uuids stringset, page_num idset);" % fb_table
-	}
-)
-
-# check status
-if fb_query.get('error'):
-	if "exists" in fb_query.get('error'):
-		print("FeatureBase database `%s` already exists." % fb_table)
-	else:
-		print("FeatureBase returned an error. Check your credentials!")
-else:
-	print("Created `%s` database on FeatureBase Cloud." % fb_table)
-
 from lib.database import weaviate_schema, weaviate_query, weaviate_update
+from lib.util import create_databases
+
+# create featurebase databases
+create_databases()
 
 # create Weaviate schema
 weaviate_schema = weaviate_schema("PDFs")
@@ -60,7 +47,13 @@ pdfFileObj = open("documents/%s" % filename, 'rb')
 
 # creating a pdf reader object 
 pdfReader = PyPDF2.PdfReader(pdfFileObj)
-	
+
+# get or set title
+if pdfReader.metadata.get('title', None):
+	title = pdfReader.metadata.get('title')
+else:
+	title = None
+
 # number of pages in pdf file 
 num_pages = len(pdfReader.pages)
 
@@ -89,8 +82,8 @@ if os.path.exists(f"{new_dir_path}/page" + str(num_pages-1) + '.jpg'):
 else:
 	print("Exporting images for PDF.")
 	for i in range(len(images)):
-		# Save pages as images in the pdf
-		images[i].save(f'{new_dir_path}/page'+ str(i) +'.jpg', 'JPEG')
+		# Save pages as images in the pdf (add 1 to the page index to ensure we match pages)
+		images[i].save(f'{new_dir_path}/page'+ str(i+1) +'.jpg', 'JPEG')
 
 # extract text
 from google.cloud import vision
@@ -98,10 +91,15 @@ import io
 client = vision.ImageAnnotatorClient()
 
 # loop through pages
-start_page = 0
-for num_page in range(start_page, num_pages):
+start_page = 1
+prev_uuid = "FIRST_BAG"
+next_uuid = "LAST_BAG"
+
+for page_num in range(start_page, num_pages+1):
+	fragment_num = 1
+
 	# open image
-	with io.open(f'{new_dir_path}/page%s.jpg' % num_page, 'rb') as image_file:
+	with io.open(f'{new_dir_path}/page%s.jpg' % page_num, 'rb') as image_file:
 		content = image_file.read()
 
 	# extract text
@@ -109,10 +107,19 @@ for num_page in range(start_page, num_pages):
 	response = client.text_detection(image=image)
 	texts = response.text_annotations
 
-	print("Reading page number %s." % num_page)
+	print("Reading page number %s." % page_num)
 	
 	# use the first extraction only (others are single words)
 	for text in texts:
+		# get title if we don't have it
+		if title is None and page_num == 1:
+			# use the first page and AI to try to get it
+			document = {"text": text.description[:512]}
+			if not document.get('title', None):
+				title = ai("get_title", document).get('title')
+				if not title:
+					title = input("Couldn't find a title. Enter a title for the PDF: ")
+
 		_text = '\n"{}"'.format(text.description)
 
 		words = ""
@@ -122,12 +129,9 @@ for num_page in range(start_page, num_pages):
 
 			words = words + " " + entry.replace("\n", " ")
 			if len(words) > 512:
-				ai_keywords = ai("gpt_keywords", {"words": words})
-
-				time.sleep(1)
 				document = {
 					"filename": filename,
-					"page_number": num_page,
+					"page_number": page_num,
 					"fragment": words.strip()
 				}
 
@@ -137,24 +141,31 @@ for num_page in range(start_page, num_pages):
 						uuid = weaviate_update(document, "PDFs")
 						break
 					except Exception as ex:
+						print("Error with Weaviate ", x)
 						print(ex)
 						print(document)
 						time.sleep(5)
 
-				for keyterm in ai_keywords:
-					if keyterm != "error":
-						query = "INSERT INTO %s VALUES('%s', '%s', ['%s'], [%s]);" % (fb_table, keyterm.lower(), filename, uuid, num_page)
-						featurebase_query({"sql": query})
+				# update featurebase doc_pages page string id
+				page_id = "%s_%s" % (page_num, hashlib.md5(filename.encode()).hexdigest()[:8])
+				query = "INSERT INTO doc_pages VALUES('%s', '%s', '%s', ['%s']);" % (page_id, filename, title, uuid)
+				featurebase_query({"sql": query})
 
+				# update featurebase doc_fragments
+				query = "INSERT INTO doc_fragments VALUES('%s', '%s', '%s', %s, %s, '%s', '%s');" % (uuid, filename, title, page_num, fragment_num, prev_uuid, words.replace("'", ""))
+
+				featurebase_query({"sql": query})
+
+				# uuid tracking
+				prev_uuid = uuid
+
+				fragment_num = fragment_num + 1
 				words = ""
 
-		if words != "" and len(words) > 23:
-			ai_doc = ai("gpt_keywords", {"words": words})
-
-			time.sleep(1)
+		if words != "" and len(words) > 3:
 			document = {
 				"filename": filename,
-				"page_number": num_page,
+				"page_number": page_num,
 				"fragment": words.strip()
 			}
 
@@ -164,16 +175,31 @@ for num_page in range(start_page, num_pages):
 					uuid = weaviate_update(document, "PDFs")
 					break
 				except Exception as ex:
+					print("try ", x)					
 					print(ex)
 					print(document)
 					time.sleep(5)
 
-			for keyterm in ai_doc:
-				if keyterm != "error":
-					query = "INSERT INTO %s VALUES('%s', '%s', ['%s'], [%s]);" % (fb_table, keyterm.lower(), filename, uuid, num_page)
-					featurebase_query({"sql": query})
+			# update featurebase doc_pages page string id
+			page_id = "%s_%s" % (page_num, hashlib.md5(filename.encode()).hexdigest()[:8])
+			query = "INSERT INTO doc_pages VALUES('%s', '%s', '%s', ['%s']);" % (page_id, filename, title, uuid)
+			featurebase_query({"sql": query})
 
+			# update featurebase doc_fragments
+			query = "INSERT INTO doc_fragments VALUES('%s', '%s', '%s', %s, %s, '%s', '%s');" % (uuid, filename, title, page_num, fragment_num, prev_uuid, words.replace("'", ""))
+			featurebase_query({"sql": query})
+			
+			# uuid tracking
+			prev_uuid = uuid
+
+			fragment_num = fragment_num + 1
 			words = ""
 
 		# don't use the single extracted words
 		break
+
+
+# close the file
+pdfFileObj.close()
+
+print("Done indexing PDF!")

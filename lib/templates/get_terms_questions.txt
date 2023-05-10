@@ -1,0 +1,10 @@
+1. Determine the TOP three (3) keyterms and a question related to them from a portion of PDF and output a Python dictionary with the information.
+2. The page fragment of the PDF contains:
+"""
+$words
+"""
+3. Output a python dictionary for the answers:
+# python dict with max (3) THREE keyterms, title and author of a PDF
+# example
+# pdf_meta = {"keyterms": ['balloon', 'pop gun', 'stuffed bear'], "question": "How did Pooh get away from the bees in the tree?"}
+pdf_meta = {

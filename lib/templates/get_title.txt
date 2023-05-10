@@ -1,0 +1,10 @@
+1. Determine the title and author of a PDF and output a Python dictionary with the information.
+2. The first page of the PDF contains:
+"""
+$text
+"""
+3. Output a python dictionary for the answers:
+# python dict with title and author of a PDF
+# example
+# pdf_meta = {"title": "Winnie-the-Pooh", "author": "A. A. Milne"}
+pdf_meta = {

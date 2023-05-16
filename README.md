@@ -1,9 +1,9 @@
-# DokGPT | Document Organization for GPT | 💻📚💡
-DokGPT implements advanced LLM prompting for organizing and discussing PDFs. The repository uses tools such as [PyPDF2](https://pypi.org/project/PyPDF2/) and [pdf2image](https://pypi.org/project/pdf2image/) for PDF processing, [Google Vision](https://cloud.google.com/vision) for text extraction from images, [nltk](https://www.nltk.org/) for text fragment/chunk extraction, [Weaviate](https://weaviate.io/) for dense vector search and embedding handling, and [FeatureBase](https://featurebase.com/) for back of the book indexing and graph traversal of questions.
+# DocGPT | Document Organization for GPT | 💻📚💡
+DocGPT implements advanced LLM prompting for organizing and discussing PDFs. The repository uses tools such as [PyPDF2](https://pypi.org/project/PyPDF2/) and [pdf2image](https://pypi.org/project/pdf2image/) for PDF processing, [Google Vision](https://cloud.google.com/vision) for text extraction from images, [nltk](https://www.nltk.org/) for text fragment/chunk extraction, [Weaviate](https://weaviate.io/) for dense vector search and embedding handling, and [FeatureBase](https://featurebase.com/) for back of the book indexing and graph traversal of questions.
 
 The project is installed, configured and run locally from the command line. You will need a [Google Cloud](https://cloud.google.com/) account with [Vision enabled](https://cloud.google.com/vision/docs/before-you-begin), an [OpenAI account](https://openai.com), a [FeatureBase cloud](https://cloud.featurebase.com) account and a [Weaviate cloud](https://console.weaviate.cloud/) account to run the code.
 
-![Doc Brown](https://github.com/FeatureBaseDB/DokGPT/blob/main/doc.jpg)
+![Doc Brown](https://github.com/FeatureBaseDB/DocGPT/blob/main/doc.jpg)
 
 ## Theory of Operation
 The process of indexing a document is divided into three main steps:

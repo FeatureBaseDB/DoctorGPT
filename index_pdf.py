@@ -3,26 +3,28 @@ import sys
 import os
 import hashlib
 
+# pdf handling libs
 import PyPDF2
 from pdf2image import convert_from_path
 
+# tokenizer for parsing things
 import nltk
-
-
-# tokenizer
 nltk.download('punkt')
 tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
 print("Tokenizer loaded...")
 
+# import AI prompt handling functions
 from lib.ai import ai
+
+# import database methods
 from lib.database import featurebase_query
 from lib.database import weaviate_schema, weaviate_query, weaviate_update
-from lib.util import create_databases
 
 # create featurebase databases
+from lib.util import create_databases
 create_databases()
 
-# create Weaviate schema
+# create a Weaviate schema
 weaviate_schema = weaviate_schema("PDFs")
 
 if weaviate_schema.get("error"):
@@ -38,14 +40,16 @@ print("\nDocuments Directory\n===================")
 for i, file in enumerate(files):
     print("%s." % i, file)
 
-# prompt for file entry
+# operate on the PDF
+#
+# prompt for file to index
 file_number = input("Enter the number of the file to index: ")
 filename = files[int(file_number)]
 
-# creating a pdf file object
+# create a pdf file object
 pdfFileObj = open("documents/%s" % filename, 'rb')
 
-# creating a pdf reader object 
+# create a pdf reader object 
 pdfReader = PyPDF2.PdfReader(pdfFileObj)
 
 # get or set title
@@ -84,119 +88,107 @@ else:
 	for i in range(len(images)):
 		# Save pages as images in the pdf (add 1 to the page index to ensure we match pages)
 		images[i].save(f'{new_dir_path}/page'+ str(i+1) +'.jpg', 'JPEG')
+#
+# end operating on PDF
 
-# extract text
+# extract text from images
 from google.cloud import vision
 import io
 client = vision.ImageAnnotatorClient()
 
-# loop through pages
+# start with page 1
 start_page = 1
-prev_uuid = "FIRST_BAG"
-next_uuid = "LAST_BAG"
+prev_uuid = "FIRST_BAG" # used for creating a linked list in FeatureBase
 
+# loop through the pages
 for page_num in range(start_page, num_pages+1):
 	fragment_num = 1
 
-	# open image
+	# open image for the page
 	with io.open(f'{new_dir_path}/page%s.jpg' % page_num, 'rb') as image_file:
 		content = image_file.read()
 
-	# extract text
+	# extract the text using Google Vision
 	image = vision.Image(content=content)
 	response = client.text_detection(image=image)
 	texts = response.text_annotations
 
-	print("Reading page number %s." % page_num)
+	# output completion status
+	print("Reading page number %s of %s." % (page_num, num_pages))
 	
-	# use the first extraction only (others are single words)
-	for text in texts:
-		# get title if we don't have it
-		if title is None and page_num == 1:
-			# use the first page and AI to try to get it
-			document = {"text": text.description[:512]}
-			if not document.get('title', None):
-				title = ai("get_title", document).get('title')
-				if not title:
-					title = input("Couldn't find a title. Enter a title for the PDF: ")
+	# use the first extraction only (other entries in the list are single words)
+	try:
+		text = texts[0]
+	except:
+		print("error in detection")
+		print(texts)
 
-		_text = '\n"{}"'.format(text.description)
+	# get title from the first page if we don't have it
+	if title is None and page_num == 1:
+		# create a document for the AI to operate on
+		document = {"text": text.description[:512]} # use the first 512 characters of the page
+		
+		if not document.get('title', None):
+			# call the AI to get the title
+			title = ai("get_title", document).get('title')
+			if not title:
+				title = input("Couldn't find a title. Enter a title for the PDF: ")
 
-		words = ""
-		for i, entry in enumerate(tokenizer.tokenize(_text)):
-			if entry == "":
-				continue
+	# clean up the text on which to operate
+	_text = text.description.replace("'", "").replace("\n", " ")
 
-			words = words + " " + entry.replace("\n", " ")
-			if len(words) > 512:
-				document = {
-					"filename": filename,
-					"page_number": page_num,
-					"fragment": words.strip()
-				}
+	# create a decently cleaned up string of words of a given length
+	words = ""
 
-				# handle 500s from weaviate (probably due to openai limits)
-				for x in range(5):
-					try:
-						uuid = weaviate_update(document, "PDFs")
-						break
-					except Exception as ex:
-						print("Error with Weaviate ", x)
-						print(ex)
-						print(document)
-						time.sleep(5)
+	# loop over the tokenized text
+	for i, entry in enumerate(tokenizer.tokenize(_text)):
+		# continue if entry is empty
+		if entry == "":
+			continue
 
-				# update featurebase doc_pages page string id
-				page_id = "%s_%s" % (page_num, hashlib.md5(filename.encode()).hexdigest()[:8])
-				query = "INSERT INTO doc_pages VALUES('%s', '%s', '%s', ['%s']);" % (page_id, filename, title, uuid)
-				featurebase_query({"sql": query})
+		# build up the words string
+		words = words + " " + entry.replace("\n", " ")
 
-				# update featurebase doc_fragments
-				query = "INSERT INTO doc_fragments VALUES('%s', '%s', '%s', %s, %s, '%s', '%s');" % (uuid, filename, title, page_num, fragment_num, prev_uuid, words.replace("'", ""))
-
-				featurebase_query({"sql": query})
-
-				# uuid tracking
-				prev_uuid = uuid
-
-				fragment_num = fragment_num + 1
-				words = ""
-
-		if words != "" and len(words) > 3:
+		# process words if the chunk is > 512 characters or we are on the last chunk
+		if len(words) > 512 or i == len(tokenizer.tokenize(_text)) - 1:
+			# create a document to send to weaviate
 			document = {
 				"filename": filename,
 				"page_number": page_num,
 				"fragment": words.strip()
 			}
 
-			# handle 500s from weaviate (probably due to openai limits)
+			# handle 500s from weaviate with a sleep and retry
+			# occurs for unknown reason...
 			for x in range(5):
 				try:
 					uuid = weaviate_update(document, "PDFs")
 					break
 				except Exception as ex:
-					print("try ", x)					
 					print(ex)
-					print(document)
 					time.sleep(5)
 
-			# update featurebase doc_pages page string id
+			# build a page_id for the page fragment
 			page_id = "%s_%s" % (page_num, hashlib.md5(filename.encode()).hexdigest()[:8])
-			query = "INSERT INTO doc_pages VALUES('%s', '%s', '%s', ['%s']);" % (page_id, filename, title, uuid)
-			featurebase_query({"sql": query})
+
+			# update featurebase doc_pages table
+			sql = "INSERT INTO doc_pages VALUES('%s', '%s', '%s', ['%s']);" % (page_id, filename, title.replace("'", ""), uuid)
+			featurebase_query({"sql": sql})
 
 			# update featurebase doc_fragments
-			query = "INSERT INTO doc_fragments VALUES('%s', '%s', '%s', %s, %s, '%s', '%s');" % (uuid, filename, title, page_num, fragment_num, prev_uuid, words.replace("'", ""))
-			featurebase_query({"sql": query})
-			
-			# uuid tracking
+			sql = "INSERT INTO doc_fragments VALUES('%s', '%s', '%s', %s, %s, '%s', '%s');" % (uuid, filename, title.replace("'", ""), page_num, fragment_num, prev_uuid, words.replace("'", ""))
+			featurebase_query({"sql": sql})
+
+			# track the previous UUID for the linked list
 			prev_uuid = uuid
 
+			# which fragment we are on
 			fragment_num = fragment_num + 1
+
+			# wipe the words
 			words = ""
 
-		# don't use the single extracted words
-		break
+	# end loop over tokenized text
 
 
 # close the file

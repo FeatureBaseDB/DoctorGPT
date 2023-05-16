@@ -24,19 +24,22 @@ for i, file in enumerate(files):
 file_number = input("Enter the number of the file to chat with: ")
 filename = files[int(file_number)]
 
+# user
+username = random_string(4)
+
 print("Entering conversation with %s. Use ctrl-C to end interaction." % filename)
 while True:
 	# get a question from the user
 
 	try:
-		query = input("user-%s[%s]> " % (random_string(4), filename))
+		query = input("user-%s[%s]> " % (username, filename))
 	except KeyboardInterrupt:
 		print()
 		print("bot>", "Bye!")
 		sys.exit()
 
 	# lookup matches from weaviate's QandAs
-	weaviate_results = weaviate_query([query], "QandAs", ["query", "answer", "origin_id", "filename"])
+	weaviate_results = weaviate_query([query], "QandAs", ["query", "answer", "origin_id", "filename"], filename=filename)
 
 	qanda_results = []
 	fragment_uuids = []
@@ -44,10 +47,9 @@ while True:
 	# filter results by filename
 	# TODO figure out issue with Weaviate not filtering
 	for _result in weaviate_results:
-		if _result.get('filename') == filename:
-			qanda_results.append({"query": _result.get('query'), "answer": _result.get('answer'), "origin_id": _result.get('origin_id'), "distance": _result.get('_additional').get("distance")})
-			if _result.get('origin_id') not in fragment_uuids:
-				fragment_uuids.append(_result.get('origin_id'))
+		qanda_results.append({"query": _result.get('query'), "answer": _result.get('answer'), "origin_id": _result.get('origin_id'), "distance": _result.get('_additional').get("distance")})
+		if _result.get('origin_id') not in fragment_uuids:
+			fragment_uuids.append(_result.get('origin_id'))
 
 	if len(fragment_uuids) == 0:
 		print("bot> You need to index this document before we discuss it.")

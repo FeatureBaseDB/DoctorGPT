@@ -147,7 +147,7 @@ def weaviate_object(uuid, collection):
 	return(document)
 
 # query weaviate for matches
-def weaviate_query(concepts, collection, fields, move_tos=[]):
+def weaviate_query(concepts, collection, fields, move_tos=[], filename=""):
 	# connect to weaviate
 	weaviate_client = weaviate.Client(
 		url = config.weaviate_endpoint,
@@ -157,6 +157,12 @@ def weaviate_query(concepts, collection, fields, move_tos=[]):
 		}
 	)
 
+	where_filter = {
+		"path": ["filename"],
+		"operator": "Equal",
+		"valueString": filename,
+	}
+
 	nearText = {
 	  "concepts": concepts,
 	  "moveTo": {
@@ -165,15 +171,27 @@ def weaviate_query(concepts, collection, fields, move_tos=[]):
 	  }
 	}
 
-	# fetch result and fields
-	result = (
-		weaviate_client.query
-		.get(collection, fields)
-		.with_near_text(nearText)
-		.with_additional(["certainty", "distance", "id"])
-		.with_limit(20)
-		.do()
-	)
+	if filename == "":
+		# fetch result and fields
+		result = (
+			weaviate_client.query
+			.get(collection, fields)
+			.with_near_text(nearText)
+			.with_additional(["certainty", "distance", "id"])
+			.with_limit(2000)
+			.do()
+		)
+	else:
+		# fetch result and fields
+		result = (
+			weaviate_client.query
+			.get(collection, fields)
+			.with_near_text(nearText)
+			.with_additional(["certainty", "distance", "id"])
+			.with_limit(20)
+			.with_where(where_filter)
+			.do()
+		)
 
 	_records = []
 

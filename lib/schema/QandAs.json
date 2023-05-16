@@ -19,36 +19,20 @@
                     "string"
                 ],
                 "name": "origin_id",
-                "moduleConfig": {
-                    "text2vec-openai": {
-                        "skip": true,
-                        "vectorizePropertyName": false
-                    }
-                }
+                "tokenization": "field"
             },
             {
                 "dataType": [
                     "string"
                 ],
                 "name": "filename",
-                "moduleConfig": {
-                    "text2vec-openai": {
-                        "skip": true,
-                        "vectorizePropertyName": false
-                    }
-                }
+                "tokenization": "field"
             },
             {
                 "dataType": [
                     "int"
                 ],
-                "name": "page_number",
-                "moduleConfig": {
-                    "text2vec-openai": {
-                        "skip": true,
-                        "vectorizePropertyName": false
-                    }
-                }
+                "name": "page_number"
             },
             {
                 "dataType": [
@@ -79,24 +63,14 @@
                     "string"
                 ],
                 "name": "probability",
-                "moduleConfig": {
-                    "text2vec-openai": {
-                        "skip": false,
-                        "vectorizePropertyName": false
-                    }
-                }
+                "tokenization": "field"
             },
             {
                 "dataType": [
                     "string"
                 ],
                 "name": "dimensionality",
-                "moduleConfig": {
-                    "text2vec-openai": {
-                        "skip": false,
-                        "vectorizePropertyName": false
-                    }
-                }
+                "tokenization": "field"
             }
         ]
     }

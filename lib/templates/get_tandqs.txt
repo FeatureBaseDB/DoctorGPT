@@ -5,6 +5,5 @@ $words
 """
 3. Output a python dictionary for the answers:
 # python dict with max (3) THREE keyterms, title and author of a PDF
-# example
 # pdf_meta = {"keyterms": ['balloon', 'pop gun', 'stuffed bear'], "question": "How did Pooh get away from the bees in the tree?"}
 pdf_meta = {

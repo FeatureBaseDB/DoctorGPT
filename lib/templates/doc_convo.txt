@@ -8,7 +8,7 @@ $keyterms
 $text
 """
 4. Output a python dictionary for the answer:
-# python dict with the query, answer and possible sentiment of a PDF
+# python dict with the question, answer and possible sentiment of a PDF
 # "🤔" (10% probability that the answer is correct)
 # "😕" (30%)
 # "😐" (50%)
@@ -26,5 +26,5 @@ $text
 # 
 # IMPORTANT: limit "keyterms" to most important TOP THREE (3) keyterms ONLY
 #
-# pdf_meta = {"query": "Who is Winnie-the-Pooh?", "keyterms": ["bear", "honey"], "answer": "Winnie-the-Pooh is a fictional stuffed bear who loves honey.", "probability": "😄", "dimensionality": "📚"}
-pdf_meta = {"query": "$query",
+# pdf_meta = {"question": "Who is Winnie-the-Pooh?", "keyterms": ["bear", "honey"], "answer": "Winnie-the-Pooh is a fictional stuffed bear who loves honey.", "probability": "😄", "dimensionality": "📚"}
+pdf_meta = {"question": "$query",

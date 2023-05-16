@@ -152,7 +152,7 @@ def gpt_keyterms(document):
 	document.pop('openai_token', None)
 
 	# substitute things
-	template = load_template("get_terms_questions")
+	template = load_template("get_tandqs")
 	prompt = template.substitute(document)
 	
 	ai_dict = gpt3_dict_completion(prompt)
@@ -190,7 +190,7 @@ def answer_question(document):
 	# substitute things
 	template = load_template("answer_question")
 	prompt = template.substitute(document)
-	
+
 	gpt_document = gpt3_dict_completion(prompt)
 
 	try:
@@ -198,15 +198,25 @@ def answer_question(document):
 	except Exception as ex:
 		document.setdefault('answer', None)
 
-	try:
-		document.setdefault('probability', gpt_document.get('probability').strip())
-	except Exception as ex:
-		document.setdefault('probability', "🤔")
+	return document
+
+
+@model
+def measure_probdim(document):
+	# load openai key then drop it from the document
+	openai.api_key = document.get('openai_token')
+	document.pop('openai_token', None)
+
+	# substitute things
+	template = load_template("get_probdims")
+	prompt = template.substitute(document)
+
+	gpt_document = gpt3_dict_completion(prompt)
 
 	try:
-		document.setdefault('dimensionality', gpt_document.get('dimensionality').strip())
+		document.setdefault('answer', gpt_document.get('answer'))
 	except Exception as ex:
-		document.setdefault('dimensionality', "🔍")
+		document.setdefault('answer', None)
 
 	return document
 
@@ -218,7 +228,7 @@ def ask_gpt(document):
 	document.pop('openai_token', None)
 
 	# substitute things
-	template = load_template("document_conversation")
+	template = load_template("doc_convo")
 	prompt = template.substitute(document)
 
 	gpt_document = gpt3_dict_completion(prompt)
@@ -232,15 +242,5 @@ def ask_gpt(document):
 		document.setdefault('keyterms', gpt_document.get('keyterms')[:3])
 	except Exception as ex:
 		document.setdefault('keyterms', [])
-
-	try:
-		document.setdefault('probability', gpt_document.get('probability').strip())
-	except Exception as ex:
-		document.setdefault('probability', "🤔")
-
-	try:
-		document.setdefault('dimensionality', gpt_document.get('dimensionality').strip())
-	except Exception as ex:
-		document.setdefault('dimensionality', "🔍")
 
 	return document

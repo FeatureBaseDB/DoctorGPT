@@ -33,7 +33,7 @@ Follow the on-screen instructions to configure your cluster. You will need to ch
 
 Once your cluster is set up, you can access it from the dashboard.
 
-"""
+```
 system> How can Tile Encoder help in monitoring data when the distribution of the data changes?
 bot> With the Tile encoder it is possible to quickly update the Product Quantization data when the data distribution changes, as the whole process is very cheap in terms of time.
 bot> None None
@@ -146,4 +146,4 @@ system> What distributions does the encoder currently support?
 bot> The encoder currently supports normal and lognormal distributions.
 bot> None None
 bot>
-"""
+```

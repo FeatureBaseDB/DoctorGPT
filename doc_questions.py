@@ -33,7 +33,7 @@ if not fb_questions:
 # itterate over questions
 for question in fb_questions:
 
-	if question.get('answer', None) == None:
+	if question.get('answer', None) == None and question.get('question', None) not in [None, "null"]:
 		print("system>", question.get('question'))
 		
 		# get question's original text fragment
@@ -64,7 +64,7 @@ for question in fb_questions:
 		concepts = prev_fragment.get('fragment')[:int(len(prev_fragment.get('fragment'))/2)] + " " + middle_fragment.get('fragment') + " " + next_fragment.get('fragment')[:int(len(next_fragment.get('fragment'))/2)]
 
 		# get related fragments to the concepts while moving toward keyterms
-		weaviate_fragments = weaviate_query([concepts], "PDFs", ["fragment", "filename"], keyterms)
+		weaviate_fragments = weaviate_query([concepts], "PDFs", ["fragment", "filename"], keyterms, filename)
 
 		# base fragment string
 		fragment_string = prev_fragment.get('fragment') + " " + middle_fragment.get('fragment') + " " + next_fragment.get('fragment')
@@ -77,7 +77,6 @@ for question in fb_questions:
 						fragment_string = fragment_string + "\nADDITIONAL CONTEXT:\n " + fragment.get('fragment')
 					else:
 						break
-
 
 		# build a document for sending to the ai
 		document = {"origin_id": uuid, "question": question.get('question'), "text": fragment_string.strip(), "title": question.get('title'), "filename": question.get('filename'), "page_number": question.get('page_num')}

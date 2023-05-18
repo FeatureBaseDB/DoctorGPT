@@ -27,4 +27,4 @@ $text
 # IMPORTANT: limit "keyterms" to most important TOP THREE (3) keyterms ONLY
 #
 # pdf_meta = {"question": "Who is Winnie-the-Pooh?", "keyterms": ["bear", "honey"], "answer": "Winnie-the-Pooh is a fictional stuffed bear who loves honey.", "probability": "😄", "dimensionality": "📚"}
-pdf_meta = {"question": "$query",
+pdf_meta = {"question": "$question",

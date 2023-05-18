@@ -40,7 +40,7 @@ while True:
 
 	# lookup matches from weaviate's QandAs
 	weaviate_results = weaviate_query([query], "QandAs", ["query", "answer", "origin_id", "filename"], filename=filename)
-
+	print(weaviate_results)
 	qanda_results = []
 	fragment_uuids = []
 
@@ -77,10 +77,10 @@ while True:
 
 	print("bot> Querying GPT...")
 
-	document = {"query": query, "text": fragments, "keyterms": keyterms[10:], "title": title}
+	document = {"question": query, "text": fragments, "keyterms": keyterms[10:], "title": title}
 	document = ai("ask_gpt", document)
 	print("bot>", document.get('answer').strip())
-	print("bot>", document.get('probability'), document.get('dimensionality'))
+	#print("bot>", document.get('probability'), document.get('dimensionality'))
 	print("bot>")
 """
 

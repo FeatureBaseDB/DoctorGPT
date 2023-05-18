@@ -38,7 +38,7 @@
                 "dataType": [
                     "string"
                 ],
-                "name": "query",
+                "name": "question",
                 "moduleConfig": {
                     "text2vec-openai": {
                         "skip": false,

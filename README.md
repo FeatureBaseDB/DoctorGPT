@@ -98,7 +98,7 @@ Run the following to install the required packages, use the `pip` package for Py
 
 If you are installing on Windows, you will like need to install the `python-poppler` package manually. To do this, follow the instructions below.
 
-#### Installing Poppler with MSYS2
+#### Installing Poppler with MSYS2 (only required if using Windows)
 ##### Install MSYS2
 
 1. Download the MSYS2 installer from the [MSYS2 website](https://www.msys2.org/).
@@ -136,7 +136,7 @@ If the command displays the Poppler version information, the installation was su
 ## Running the Project
 There is already one document in the `documents` directory. If you want to index another document, place the PDF in this directory before starting indexing.
 
-There are four (3) steps involved in getting a document to the point it can be interacted with.
+There are three (3) steps involved in getting a document to the point it can be interacted with.
 
 ### Fragmenting and Indexing
 To image, extract text, fragment and embed the document for searching, run the following:

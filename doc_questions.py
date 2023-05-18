@@ -90,7 +90,7 @@ for question in fb_questions:
 		if document.get('error') == None:
 			# print our results
 			print("bot>", document.get('answer'))
-			print("bot>", document.get('probability'), document.get('dimensionality'))
+			# print("bot>", document.get('probability'), document.get('dimensionality'))
 			print("bot>")
 
 			# update weaviate with query and answer information

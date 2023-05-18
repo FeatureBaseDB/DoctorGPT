@@ -96,23 +96,21 @@ If you are installing on Windows, you will like need to install the `python-popp
 2. Execute the following command to update the package database and core packages:
 ```
 pacman -Syu
-Install Poppler:
 ```
-
-3. In the MSYS2 terminal, run the following command to install Poppler:
+ 
+##### Install Poppler
+1. In the MSYS2 terminal, run the following command to install Poppler:
 ```
 pacman -S mingw-w64-x86_64-poppler
-Add Poppler to PATH:
 ```
-
-4. Open a regular command prompt or terminal (use Powershell).
-5. Run the following command to add the Poppler binaries to your system's PATH:
+2. Open a regular command prompt or terminal (use Powershell).
+3. Run the following command to add the Poppler binaries to your system's PATH:
 ```
 set PATH=C:\msys64\mingw64\bin;%PATH%
 ```
-Replace C:\msys64 with the installation path of MSYS2 if it differs.
+Replace `C:\msys64` with the installation path of MSYS2 if it differs.
 
-##### Verify the installation:
+##### Verify the Installation
 
 Open a new command prompt or terminal and run the following command to check if Poppler is installed:
 ```

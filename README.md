@@ -1,4 +1,4 @@
-# DocGPT | Document Organization for GPT | 💻📚💡
+# DocGPT | Document Organization Concept for GPT | 💻📚💡
 DocGPT implements advanced LLM prompting for organizing and discussing PDFs, and does so without using any type of prompt processing frameworks, like Langchain. The project aims to provide a referencable solution for building intelligent prompting systems from scratch.
 
 The repository uses tools such as [PyPDF2](https://pypi.org/project/PyPDF2/) and [pdf2image](https://pypi.org/project/pdf2image/) for PDF processing, [Google Vision](https://cloud.google.com/vision) for text extraction from images, [nltk](https://www.nltk.org/) for text fragment/chunk extraction, [Weaviate](https://weaviate.io/) for dense vector search and embedding handling, and [FeatureBase](https://featurebase.com/) for back of the book indexing and graph traversal of terms and questions.

@@ -53,7 +53,7 @@ Once the SDK is installed, open a terminal (Powershell will work for Windows) an
 
 `gcloud auth application-default login`
 
-A `.json` authentication file will be downloaded, which will be used to authenticate the project to your Google Cloud Vision API endpoints.
+A `.json` authentication file will be downloaded, which will be used automatically to authenticate the project to your Google Cloud Vision API endpoints. No configuration is needed beyond this step.
 
 ### Checkout the Code
 To check out the code from Github, run the following command from a terminal window (we recommend using [GitBash](https://git-scm.com/downloads) on Windows to do this step):
@@ -65,4 +65,5 @@ Change into the directory to prepare for installing the packages required to run
 `cd ~/<path_to_code>/DocGPT`
 
 On Windows, you'll want to do this step in Powershell.
+
 

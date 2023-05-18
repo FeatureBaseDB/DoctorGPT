@@ -2,8 +2,8 @@
 openai==0.27.4
 weaviate-client==3.16.1
 nltk==3.8.1
-beautifulsoup4==4.12.2
 pdf2image==1.16.3
 PyPDF2==3.0.1
 google-api-python-client==2.86.0
 google-cloud-vision==3.4.1
+python-poppler==0.4.1

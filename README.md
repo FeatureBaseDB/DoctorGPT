@@ -136,7 +136,7 @@ If the command displays the Poppler version information, the installation was su
 ## Running the Project
 There is already one document in the `documents` directory. If you want to index another document, place the PDF in this directory before starting indexing.
 
-Before running any of these steps on Windows, you will need to run the following in a Powershell window:
+Before running any of these steps on Windows, you will need to run something like the following in a Powershell window (replace the front part of the path to your poppler install path):
 
 ```
 $env:Path = "C:\Users\kord\Desktop\poppler-23.05.0\Library\bin;" + $env:Path

@@ -80,7 +80,7 @@ Once the SDK is installed, open a terminal (Powershell will work for Windows) an
 A `.json` authentication file will be downloaded, which will be used automatically to authenticate the project to your Google Cloud Vision API endpoints. No configuration is needed beyond this step.
 
 ## Continue Setup
-You'll need to grab an auth token for GPT-X from OpenAI, the token for FeatureBase, and install the required packages for Python to run the code.
+You'll need to grab an auth token for GPT-X from OpenAI, and install the required packages for Python to run the code.
 
 ### OpenAI Auth
 Go to [OpenAI](https://openai.com/) and signup or login. Navigate to the [getting started page](https://platform.openai.com/) and click on your user profile at the top right. 

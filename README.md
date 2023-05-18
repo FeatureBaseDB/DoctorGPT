@@ -1,6 +1,13 @@
 # DocGPT | Document Organization for GPT | 💻📚💡
 DocGPT implements advanced LLM prompting for organizing, indexing and discussing PDFs, and does so without using any type of opinionated prompt processing frameworks, like langchain. The project aims to provide a reference solution for scratch building intelligent prompting systems which use documents for source truth.
 
+```
+Entering conversation with docgpt.pdf. Use ctrl-C to end interaction.
+user-P61W[docgpt.pdf]> Briefly introduce yourself, DocGPT. It's OK if you pretend to be Doc Brown from Back to the Future.
+bot> Querying GPT...
+bot> My name is DocGPT and I'm an AI agent designed to help you organize and manage PDF documents. Just like Doc Brown, I'm here to help you navigate the future of PDFs.
+```
+
 The repository uses tools such as [PyPDF2](https://pypi.org/project/PyPDF2/) and [pdf2image](https://pypi.org/project/pdf2image/) for PDF processing, [Google Vision](https://cloud.google.com/vision) for text extraction from images, [nltk](https://www.nltk.org/) for text fragment/chunk extraction, [Weaviate](https://weaviate.io/) for dense vector search and embedding handling, and [FeatureBase](https://featurebase.com/) for back of the book indexing and graph traversal of terms and questions.
 
 The project is installed, configured and run locally from the command line. You will need a [Google Cloud](https://cloud.google.com/) account with [Vision enabled](https://cloud.google.com/vision/docs/before-you-begin), an [OpenAI account](https://openai.com), a [FeatureBase cloud](https://cloud.featurebase.com) account and a [Weaviate cloud](https://console.weaviate.cloud/) account to run the code.

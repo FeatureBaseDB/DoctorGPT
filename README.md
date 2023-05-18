@@ -74,7 +74,7 @@ Go to [OpenAI](https://openai.com/) and signup or login. Navigate to the [gettin
 Select "view API keys" and then create a new API key. Copy this key and put it in the `config.py` file under the `openai_token` variable.
 
 ### Install Requirements
-There are many packages used for this project that are required for execution. You may inspect the packages by loking at the `requirements.txt` file in the root directory of the project.
+There are many packages used for this project that are required for execution. You may inspect the packages by looking at the `requirements.txt` file in the root directory of the project.
 
 To install the required packages, ensure you have Python 3.10.11 or greater installed. It may be possible to use a lower version of Python, but this package has only been tested on Python 3.10.x, so your mileage may vary. It is left up to the user to determine the best way to update Python, but you may want to ask [ChatGTP](https://chat.openai.com) about it.
 
@@ -87,7 +87,7 @@ If you are installing on Windows, you will like need to install the `python-popp
 #### Installing Poppler with MSYS2
 ##### Install MSYS2
 
-1. Download the MSYS2 installer from the MSYS2 website.
+1. Download the MSYS2 installer from the [MSYS2 website](https://www.msys2.org/).
 1. Run the installer and follow the installation instructions.
 
 ##### Update MSYS2

@@ -63,7 +63,7 @@ def load_template(name="default"):
 	file_path = "%s/templates/%s.txt" % (lib_path, name)
 
 	try:
-		with open(file_path, 'r') as f:
+		with open(file_path, 'r', encoding='utf-8') as f:
 			template = Template(f.read())
 	except Exception as ex:
 		print(ex)
@@ -229,6 +229,7 @@ def ask_gpt(document):
 
 	# substitute things
 	template = load_template("doc_convo")
+	
 	prompt = template.substitute(document)
 
 	gpt_document = gpt3_dict_completion(prompt)

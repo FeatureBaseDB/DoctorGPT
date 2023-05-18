@@ -32,22 +32,22 @@ while True:
 	# get a question from the user
 
 	try:
-		query = input("user-%s[%s]> " % (username, filename))
+		question = input("user-%s[%s]> " % (username, filename))
 	except KeyboardInterrupt:
 		print()
 		print("bot>", "Bye!")
 		sys.exit()
 
 	# lookup matches from weaviate's QandAs
-	weaviate_results = weaviate_query([query], "QandAs", ["query", "answer", "origin_id", "filename"], filename=filename)
-	print(weaviate_results)
+	weaviate_results = weaviate_query([question], "QandAs", ["question", "answer", "origin_id", "filename"], filename=filename)
+
 	qanda_results = []
 	fragment_uuids = []
 
 	# filter results by filename
 	# TODO figure out issue with Weaviate not filtering
 	for _result in weaviate_results:
-		qanda_results.append({"query": _result.get('query'), "answer": _result.get('answer'), "origin_id": _result.get('origin_id'), "distance": _result.get('_additional').get("distance")})
+		qanda_results.append({"question": _result.get('question'), "answer": _result.get('answer'), "origin_id": _result.get('origin_id'), "distance": _result.get('_additional').get("distance")})
 		if _result.get('origin_id') not in fragment_uuids:
 			fragment_uuids.append(_result.get('origin_id'))
 
@@ -77,7 +77,8 @@ while True:
 
 	print("bot> Querying GPT...")
 
-	document = {"question": query, "text": fragments, "keyterms": keyterms[10:], "title": title}
+	document = {"question": question, "text": fragments, "keyterms": keyterms[10:], "title": title}
+
 	document = ai("ask_gpt", document)
 	print("bot>", document.get('answer').strip())
 	#print("bot>", document.get('probability'), document.get('dimensionality'))

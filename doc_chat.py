@@ -18,7 +18,7 @@ dir_path = "./documents/"
 files = os.listdir(dir_path)
 print("\nDocuments Directory\n===================")
 for i, file in enumerate(files):
-    print("%s." % i, file)
+	print("%s." % i, file)
 
 # prompt for file entry
 file_number = input("Enter the number of the file to chat with: ")
@@ -26,6 +26,55 @@ filename = files[int(file_number)]
 
 # user
 username = random_string(4)
+
+from collections import defaultdict
+
+def extract_keyterms(data):
+	# Create a dictionary to store keyterms and their relevance count
+	relevance_count = defaultdict(int)
+	uuids_dict = defaultdict(set)
+
+	# Iterate over the data
+	for item in data:
+		uuids = item['uuids']
+		page_nums = item['page_num']
+		keyterm = item['_id']
+
+		# Increment relevance count for each keyterm based on UUIDs and page numbers
+		for other_item in data:
+			if other_item is not item:
+				other_uuids = other_item['uuids']
+				other_page_nums = other_item['page_num']
+
+				# Check if there are similar UUIDs or page numbers
+				if set(uuids) & set(other_uuids) or set(page_nums) & set(other_page_nums):
+					relevance_count[keyterm] += 1
+					uuids_dict[keyterm].update(uuids)
+
+	# Sort keyterms based on relevance count in descending order
+	sorted_keyterms = sorted(relevance_count.items(), key=lambda x: x[1], reverse=True)
+
+	# Sort UUIDs for each keyterm based on reference count
+	sorted_uuids_dict = {keyterm: sorted(list(uuids), key=lambda x: len(uuids_dict[keyterm]), reverse=True) for keyterm, uuids in uuids_dict.items()}
+
+	# Return relevant keyterms and sorted UUIDs
+	return [(keyterm, sorted_uuids_dict[keyterm]) for keyterm, _ in sorted_keyterms]
+
+def extract_most_referenced_uuids(relevant_keyterms, num_uuids=10):
+	# Create a dictionary to store the reference count for each UUID
+	uuid_count = defaultdict(int)
+
+	# Iterate over the relevant keyterms
+	for _, uuids in relevant_keyterms:
+		for uuid in uuids:
+			uuid_count[uuid] += 1
+
+	# Sort UUIDs based on their reference count in descending order
+	sorted_uuids = sorted(uuid_count.items(), key=lambda x: x[1], reverse=True)
+
+	# Retrieve the top N most referenced UUIDs
+	top_uuids = [uuid for uuid, _ in sorted_uuids[:num_uuids]]
+	return top_uuids
 
 print("Entering conversation with %s. Use ctrl-C to end interaction." % filename)
 while True:
@@ -59,108 +108,37 @@ while True:
 	fragments = ""
 	keyterms = []
 	title = ""
-	for uuid in fragment_uuids:
-		sql = "SELECT * FROM doc_keyterms WHERE SETCONTAINS(uuids, '%s')" % uuid
-		keyterm_results = featurebase_query({"sql": sql}).get('results')
 
-		for keyterm in keyterm_results:
-			if keyterm.get('_id') not in keyterms:
-				keyterms.append(keyterm.get('_id'))
-			title = keyterm.get('title')
+	sql = "SELECT * FROM doc_keyterms WHERE "
+	for i, uuid in enumerate(fragment_uuids):
+		sql = sql + "SETCONTAINS (uuids, '%s')" % uuid
+		if i < len(fragment_uuids) - 1:
+			sql = sql + " OR "
+	keyterm_results = featurebase_query({"sql": sql}).get('results')
 
-		sql = "SELECT fragment FROM doc_fragments WHERE _id = '%s'" % uuid
-		fragment_results = featurebase_query({"sql": sql}).get('results')
-		for fragment in fragment_results:
-			if len(fragments) < 1500:
-				fragments = fragments + fragment.get('fragment') + " "
+	relevant_keyterms = extract_keyterms(keyterm_results)
 
+	for keyterm in relevant_keyterms:
+		keyterms.append(keyterm[0])
+
+	top_referenced_uuids = extract_most_referenced_uuids(relevant_keyterms, num_uuids=10)
+
+	sql = "SELECT * FROM doc_fragments WHERE "
+	for i, uuid in enumerate(top_referenced_uuids):
+		sql = sql + "_id = '%s'" % uuid
+		if i < len(top_referenced_uuids) - 1:
+			sql = sql + " OR "
+
+	fragment_results = featurebase_query({"sql": sql}).get('results')
+	fragments = ""
+	for result in fragment_results:
+		title = result.get('title')
+		fragments = fragments + " " + result.get('fragment')
 
 	print("bot> Querying GPT...")
 
-	document = {"question": question, "text": fragments, "keyterms": keyterms[10:], "title": title}
+	document = {"question": question, "text": fragments, "keyterms": keyterms, "title": title}
 
-	document = ai("ask_gpt", document)
-	print("bot>", document.get('answer').strip())
-	#print("bot>", document.get('probability'), document.get('dimensionality'))
-	print("bot>")
-"""
-
-	keyterms = []
-	for _id in vector_uuids:
-		sql = "SELECT * FROM doc_keyterms WHERE SETCONTAINS(uuids, '%s')" % _id
-		keyterm_results = featurebase_query({"sql": sql}).get('results')
-
-		for keyterm in keyterm_results:
-			keyterms.append(keyterm.get('_id'))
-
-	from collections import Counter
-	counts = Counter(keyterms)
-
-	max_occurance = 0
-	for k,v in counts.items():
-		if v > max_occurance:
-			max_occurance = v
-
-	top_keyterms = []
-	for k,v in counts.items():
-		if v == max_occurance:
-			if k not in top_keyterms:
-				top_keyterms.append(k)
-
-	# grab fragments from a weaviate vector search (applying keyterms to affect move tos)
-	weaviate_results = weaviate_query([query], "PDFs", ["fragment", "filename", "page_number"], top_keyterms)
+	document = ai("ask_gptchat", document)
 	
-	vector_fragments = []
-	# filter results by filename
-	# TODO figure out issue with Weaviate not filtering
-	for _result in weaviate_results:
-		if _result.get('filename') == filename:
-			if _result.get('_additional').get('id') not in vector_uuids:
-				vector_fragments.append(_result.get('fragment'))
-
-		if len(vector_fragments) > 4:
-			break
-
-
-	print(vector_fragments)
-
-	title = item[2]
-	query = item[3]
-	keyterms = item[4]
-	print(query)
-	# create a result set
-	vector_uuids = []
-
-	# select the ids from featurebase
-	for keyterm in keyterms:
-		sql = "SELECT * FROM doc_keyterms WHERE _id = '%s';" % keyterm.lower()
-		fb_result_keyterms = featurebase_query({"sql": sql}).get('data')
-		for _uuid in fb_result_keyterms[0][3]:
-			if _uuid not in vector_uuids:
-				vector_uuids.append(_uuid)
-
-	# append the vectors from weaviate to the array
-	vector_results = []
-	for uuid in vector_uuids:
-		vector_results.append(weaviate_object(uuid, "PDFs").get('properties').get('fragment'))
-
-	# grab fragments from weaviate
-	weaviate_results = weaviate_query([query], "PDFs", ["fragment", "filename", "page_number"], keyterms)
-	
-	# filter results by filename
-	# TODO figure out issue with Weaviate not filtering
-	for _result in weaviate_results:
-		if _result.get('filename') == filename:
-			if _result.get('_additional').get('id') not in vector_uuids:
-				vector_results.append(_result.get('fragment'))
-
-		if len(vector_results) > 4:
-			break
-
-	_text = ""
-	for result in vector_results:
-		_text = _text + " " + result
-
-	document = {"query": query, "text": _text.strip(), "title": title}
-	print(ai("answer_question", document))
-"""
+	print("bot> " + document.get('answer'))

@@ -104,6 +104,26 @@ def gpt_chat_keywords(words):
 
 	return answer
 
+# gptchat
+def gpt_chat_complete(words, keyterms, title, question):
+	try:
+		messages = [
+			{"role": "system", "content": "Answer questions from the document %s whose fragments are provided."},			
+			{"role": "user", "content": "keyterms are: " + "".join(keyterms) + "\nfragment: '''"+words+"'''\n"+question}
+		]
+
+		completion = openai.ChatCompletion.create(
+			model = config.model,
+			messages = messages
+		)
+
+		answer = completion.choices[0].message.content
+
+	except Exception as ex:
+		print(ex)
+		answer = "Call to OpenAI chat failed: %s" % ex
+
+	return answer
 
 # completion
 def gpt3_completion(prompt, temperature=0.95, max_tokens=512, top_p=1, fp=0, pp=0):
@@ -135,6 +155,7 @@ def gpt3_dict_completion(prompt, temperature=0.90, max_tokens=256, top_p=1, fp=0
 		python_dict = {}
 		python_dict['error'] = "Call to OpenAI completion failed: %s" % ex
 		python_dict['dict_string'] = answer
+		print(python_dict.get('dict_string'))
 		python_dict['answer'] = "An error occurred talking to OpenAI. Try again in a minute."
 
 	return python_dict
@@ -214,9 +235,9 @@ def measure_probdim(document):
 	gpt_document = gpt3_dict_completion(prompt)
 
 	try:
-		document.setdefault('answer', gpt_document.get('answer'))
+		document.setdefault('probability', gpt_document.get('probability'))
 	except Exception as ex:
-		document.setdefault('answer', None)
+		document.setdefault('probability', None)
 
 	return document
 
@@ -231,7 +252,7 @@ def ask_gpt(document):
 	template = load_template("doc_convo")
 	
 	prompt = template.substitute(document)
-
+	print(prompt)
 	gpt_document = gpt3_dict_completion(prompt)
 
 	try:
@@ -240,8 +261,20 @@ def ask_gpt(document):
 		document.setdefault('answer', None)
 
 	try:
+		# just grab 3 keyterms
 		document.setdefault('keyterms', gpt_document.get('keyterms')[:3])
 	except Exception as ex:
 		document.setdefault('keyterms', [])
 
+	return document
+
+@model
+def ask_gptchat(document):
+	# load openai key then drop it from the document
+	openai.api_key = document.get('openai_token')
+	document.pop('openai_token', None)
+
+	answer = gpt_chat_complete(document.get('text'), document.get('keyterms'), document.get('title'), document.get('question'))
+
+	document.setdefault('answer', answer)
 	return document

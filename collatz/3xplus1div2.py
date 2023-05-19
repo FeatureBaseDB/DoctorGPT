@@ -9,7 +9,8 @@ except Exception as ex:
 	print(ex)
 
 values = ""
-for x in range(1,30000):
+x = int(input("enter the number: "))
+if x > 0:
 	# print("running %s" % x)
 
 	# the proof is we foolishly believe this will exit
@@ -28,15 +29,18 @@ for x in range(1,30000):
 
 		# query for if we have the newly calculated number already
 		query = "SELECT next_set FROM collatz_flotz WHERE _id = %s" % x
+		print(query)
 		result = featurebase_query({"sql": query})
 
 		# we already have the next number, so we add x to the prev_set set and exit loop
 		if result.get('data'):
+			print("connected")
 			_next_set = result.get('data')[0][0]
 			
 			values = values + "(%s, [%s], %s)" % (x, prev_set, _next_set)
 
 			query = "INSERT INTO collatz_flotz (_id, prev_set, next_set) VALUES %s;" % values
+			print(query)
 			result = featurebase_query({"sql": query})
 
 			values = ""
@@ -49,9 +53,8 @@ for x in range(1,30000):
 				next_set = (x * 3) + 1
 			else:
 				next_set = int(x / 2)
-
+			print(x,prev_set,next_set)
 			values = values + "(%s, [%s], %s)," % (x, prev_set, next_set)
-
 		if x == 1:
 			break
 

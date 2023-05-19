@@ -32,19 +32,24 @@ if not fb_questions:
 
 # itterate over questions
 for question in fb_questions:
+	if question.get('question') == "None" or question.get('question') == "null":
+		print("Removing empty question.")
+		remove_uuid = question.get('_id')
+		sql = "DELETE FROM doc_questions WHERE _id = '%s'" % remove_uuid
+		featurebase_query({"sql": sql})
 
-	if question.get('answer', None) == None and question.get('question', None) not in [None, "null"]:
+	if question.get('answer', "null") == "null" or question.get('answer', "None") == "None" or question.get('answer') == None:
 		print("system>", question.get('question'))
 		
 		# get question's original text fragment
 		uuid = question.get('_id')
 		keyterms = question.get('keyterms')
 
-		# middle fragment
+		# get the middle fragment
 		sql = "SELECT * FROM doc_fragments WHERE _id = '%s'" % uuid
 		middle_fragment = featurebase_query({"sql": sql}).get('results')[0] # get just one entry
 		
-		# next fragment having prev_uuid the same as the middle fragment's uuid
+		# get next fragment having prev_uuid the same as the middle fragment's uuid
 		sql = "SELECT * FROM doc_fragments WHERE prev_id = '%s'" % uuid
 		try:
 			next_fragment = featurebase_query({"sql": sql}).get('results')[0] # get just one entry
@@ -52,7 +57,7 @@ for question in fb_questions:
 			# probably the last fragment
 			next_fragment = {"fragment": ""}
 		
-		# prev fragment having its _id equal to the middle fragment's previous uuid
+		# get prev fragment having its _id equal to the middle fragment's previous uuid
 		try:
 			sql = "SELECT * FROM doc_fragments WHERE _id = '%s'" % middle_fragment.get('prev_id')
 			prev_fragment = featurebase_query({"sql": sql}).get('results')[0] # get just one entry
@@ -63,12 +68,13 @@ for question in fb_questions:
 		# add half the previous fragment, the middle fragment and half the next fragment to concepts
 		concepts = prev_fragment.get('fragment')[:int(len(prev_fragment.get('fragment'))/2)] + " " + middle_fragment.get('fragment') + " " + next_fragment.get('fragment')[:int(len(next_fragment.get('fragment'))/2)]
 
-		# get related fragments to the concepts while moving toward keyterms
+		# get related fragments to the concepts while moving toward existing keyterms
 		weaviate_fragments = weaviate_query([concepts], "PDFs", ["fragment", "filename"], keyterms, filename)
 
 		# base fragment string
 		fragment_string = prev_fragment.get('fragment') + " " + middle_fragment.get('fragment') + " " + next_fragment.get('fragment')
 
+		# operate over the fragments coming back from weaviate
 		for fragment in weaviate_fragments:
 			fragment_id = fragment.get("_additional").get('id')
 			if fragment.get('filename') == filename and fragment_id != question.get('_id') and fragment_id != prev_fragment.get('_id') and fragment_id != next_fragment.get('_id'):
@@ -83,23 +89,22 @@ for question in fb_questions:
 		document = ai("answer_question", document)
 
 		# get the probability and dimensionality
-		# document = ai("measure_probdim", document)
+		document = ai("measure_probdim", document)
 
 		# update if we have a good answer
 		if document.get('error') == None:
 			# print our results
 			print("bot>", document.get('answer'))
 			# print("bot>", document.get('probability'), document.get('dimensionality'))
-			print("bot>")
+			print("bot>", document.get('probability'))
 
 			# update weaviate with query and answer information
 			_uuid = weaviate_update(document, "QandAs")
 
 			# update featurebase doc_questions
-			sql = "INSERT INTO doc_questions VALUES('%s', '%s', '%s', '%s', %s, %s, '%s', '%s', '%s')" % (uuid, question.get('filename'), question.get('title'), question.get('question'), keyterms, question.get('page_num'), document.get('answer').replace("'", ""), document.get('probability'), document.get('dimensionality'))
+			sql = "INSERT INTO doc_questions VALUES('%s', '%s', '%s', '%s', %s, %s, '%s', '%s')" % (uuid, question.get('filename'), question.get('title'), question.get('question'), keyterms, question.get('page_num'), document.get('answer').replace("'", ""), document.get('probability'))
 			featurebase_query({"sql": sql})
 		else:
 			print("bot> ", document.get('error'), document.get('answer'))
 			print("bot> ")
-
 

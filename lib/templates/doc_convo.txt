@@ -1,4 +1,4 @@
-1. Read the content in step 3 and build a python dictionary to answer the question in step 3.
+1. Read the content in step 3 and build a python dictionary to answer the question in step 4.
 2. There are keyterms associated with this content:
 """
 $keyterms
@@ -8,23 +8,6 @@ $keyterms
 $text
 """
 4. Output a python dictionary for the answer:
-# python dict with the question, answer and possible sentiment of a PDF
-# "🤔" (10% probability that the answer is correct)
-# "😕" (30%)
-# "😐" (50%)
-# "🙂" (70%)
-# "😃" (90%)
-# "😄" (95%)
-# "🎉" (99% probability that the answer is correct)
-# "🔍" (Answer dimensionality is uncertain and requires further investigation)
-# "📉" (dimensionality is disappointing and contradicts expectations)
-# "🤷‍♂️" (neutral and leaves the questioner unsure)
-# "💡" (logical and well-founded)
-# "📚" (informative and enlightening)
-# "💯" (dimensionality is factual and accurate)
-# "🔬" (Answer dimensionality is groundbreaking and scientifically supported)
-# 
-# IMPORTANT: limit "keyterms" to most important TOP THREE (3) keyterms ONLY
-#
-# pdf_meta = {"question": "Who is Winnie-the-Pooh?", "keyterms": ["bear", "honey"], "answer": "Winnie-the-Pooh is a fictional stuffed bear who loves honey.", "probability": "😄", "dimensionality": "📚"}
+# python dict with the question, answer for the question
+# pdf_meta = {"question": "Who is Winnie-the-Pooh?", "answer": "Winnie-the-Pooh is a fictional stuffed bear who loves honey."}
 pdf_meta = {"question": "$question",

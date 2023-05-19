@@ -60,6 +60,7 @@ for page in doc_pages:
 		for x in range(5):
 			# call the AI with a document containing "words"
 			document = ai("gpt_keyterms", {"words": words})
+			print(document)
 			if not document.get('error', None) and document.get('keyterms'):
 				break
 			else:
@@ -69,12 +70,12 @@ for page in doc_pages:
 
 		# if we don't have an error
 		if not document.get('error', None):
-			if document.get('keyterms'):
+			if document.get('keyterms') and document.get('question'):
 				for keyterm in document.get('keyterms'):
 					sql = "INSERT INTO doc_keyterms VALUES('%s', '%s', '%s', ['%s'], [%s]);" % (keyterm.lower(), filename, title, uuid, page_num)
 					featurebase_query({"sql": sql})
-				sql = "INSERT INTO doc_questions VALUES('%s', '%s', '%s', '%s', %s, %s, '', '', '')" % (uuid, filename, title, document.get('question'), document.get('keyterms'), page_num)
+				sql = "INSERT INTO doc_questions VALUES('%s', '%s', '%s', '%s', %s, %s, '', '')" % (uuid, filename, title, document.get('question'), document.get('keyterms'), page_num)
 				featurebase_query({"sql": sql})
 			else:
-				print("No keyterms found?")
+				print("No keyterms or question found?")
 				print(document)

@@ -1,1 +1,17 @@
-measure_probdim.txt
+1. Determine the probability the answer to the question is accurate.
+2. Use the following for resprenting the probabilities, keeping in mind you can't always be right (or the question is bad)
+"""
+return "🎯"  # Bulls-eye emoji represents a high probability of accuracy
+return "👍"  # Thumbs up emoji represents a fairly high probability
+return "🤔"  # Thinking face emoji represents an uncertain probability
+return "⚠️"  # Warning emoji represents a fairly low probability
+return "❌"  # Cross mark emoji represents a low probability of accuracy
+"""
+3. The page fragment of the PDF used to ask and answer the question contains:
+"""
+$text
+"""
+4. Output a python dictionary for the probability measurment, with an emoji:
+# python dict with max (3) THREE keyterms, title and author of a PDF
+# pdf_meta = {"question": "How did Pooh get away from the bees?", "answer": "Pooh runs away from the bees with Christopher Robin.", "probability": "👍"}
+pdf_meta = {"question": "$question", "answer": "$answer", 

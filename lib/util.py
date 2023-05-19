@@ -74,7 +74,7 @@ def create_databases():
 	fb_table = "doc_questions"
 	fb_query = featurebase_query(
 		{
-			"sql": "CREATE TABLE %s (_id string, filename string, title string, question string, keyterms stringset, page_num int, answer string, probability string, dimensionality string);" % fb_table
+			"sql": "CREATE TABLE %s (_id string, filename string, title string, question string, keyterms stringset, page_num int, answer string, probability string);" % fb_table
 		}
 	)
 

@@ -78,14 +78,6 @@ def random_string(size=6, chars=string.ascii_letters + string.digits):
 	return ''.join(random.choice(chars) for _ in range(size))
 
 
-# gpt3 dense vectors
-def gpt3_embedding(content, engine='text-similarity-ada-001'):
-	content = content.encode(encoding='ASCII',errors='ignore').decode()
-	response = openai.Embedding.create(input=content,engine=engine)
-	vector = response['data'][0]['embedding']  # this is a normal list
-	return vector
-
-
 # gptchat
 def gpt_chat_keywords(words):
 	try:
@@ -108,8 +100,8 @@ def gpt_chat_keywords(words):
 def gpt_chat_complete(words, keyterms, title, question):
 	try:
 		messages = [
-			{"role": "system", "content": "Answer questions from the document %s whose fragments are provided."},			
-			{"role": "user", "content": "keyterms are: " + "".join(keyterms) + "\nfragment: '''"+words+"'''\n"+question}
+			{"role": "system", "content": "Answer questions from the document %s whose fragments are provided here, but only mention the document and do not refer to 'fragments'." % title},			
+			{"role": "user", "content": "keyterms are: " + ", ".join(keyterms) + "\nfragment: '''"+words+"'''\n"+question}
 		]
 
 		completion = openai.ChatCompletion.create(
@@ -146,7 +138,7 @@ def gpt3_completion(prompt, temperature=0.95, max_tokens=512, top_p=1, fp=0, pp=
 
 	return answer
 
-def gpt3_dict_completion(prompt, temperature=0.90, max_tokens=256, top_p=1, fp=0, pp=0):
+def gpt3_dict_completion(prompt, temperature=0.90, max_tokens=512, top_p=1, fp=0, pp=0):
 	answer = gpt3_completion(prompt, temperature, max_tokens, top_p, fp, pp)
 	
 	try:
@@ -155,7 +147,6 @@ def gpt3_dict_completion(prompt, temperature=0.90, max_tokens=256, top_p=1, fp=0
 		python_dict = {}
 		python_dict['error'] = "Call to OpenAI completion failed: %s" % ex
 		python_dict['dict_string'] = answer
-		print(python_dict.get('dict_string'))
 		python_dict['answer'] = "An error occurred talking to OpenAI. Try again in a minute."
 
 	return python_dict
@@ -252,7 +243,6 @@ def ask_gpt(document):
 	template = load_template("doc_convo")
 	
 	prompt = template.substitute(document)
-	print(prompt)
 	gpt_document = gpt3_dict_completion(prompt)
 
 	try:
@@ -262,7 +252,7 @@ def ask_gpt(document):
 
 	try:
 		# just grab 3 keyterms
-		document.setdefault('keyterms', gpt_document.get('keyterms')[:3])
+		document.setdefault('keyterms', gpt_document.get('keyterms')[:5])
 	except Exception as ex:
 		document.setdefault('keyterms', [])
 

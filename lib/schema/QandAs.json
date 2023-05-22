@@ -30,9 +30,10 @@
             },
             {
                 "dataType": [
-                    "int"
+                    "string"
                 ],
-                "name": "page_number"
+                "name": "page_id",
+                "tokenization": "field"
             },
             {
                 "dataType": [
@@ -57,20 +58,6 @@
                         "vectorizePropertyName": false
                     }
                 }
-            },
-            {
-                "dataType": [
-                    "string"
-                ],
-                "name": "probability",
-                "tokenization": "field"
-            },
-            {
-                "dataType": [
-                    "string"
-                ],
-                "name": "dimensionality",
-                "tokenization": "field"
             }
         ]
     }

@@ -55,7 +55,7 @@ def create_databases():
 	fb_table = "doc_keyterms"
 	fb_query = featurebase_query(
 		{
-			"sql": "CREATE TABLE %s (_id string, filename string, title string, uuids stringset, page_num idset);" % fb_table
+			"sql": "CREATE TABLE %s (_id string, filenames stringset, titles stringset, uuids stringset, page_ids stringset);" % fb_table
 		}
 	)
 
@@ -74,7 +74,7 @@ def create_databases():
 	fb_table = "doc_questions"
 	fb_query = featurebase_query(
 		{
-			"sql": "CREATE TABLE %s (_id string, filename string, title string, question string, keyterms stringset, page_num int, answer string, probability string);" % fb_table
+			"sql": "CREATE TABLE %s (_id string, filename string, title string, question string, keyterms stringset, page_id string, answer string, probability string);" % fb_table
 		}
 	)
 
@@ -93,7 +93,7 @@ def create_databases():
 	fb_table = "doc_fragments"
 	fb_query = featurebase_query(
 		{
-			"sql": "CREATE TABLE %s (_id string, filename string, title string, page_num int, fragment_num int, prev_id string, fragment string);" % fb_table
+			"sql": "CREATE TABLE %s (_id string, filename string, title string, page_num int, page_id string, fragment_num int, prev_id string, fragment string);" % fb_table
 		}
 	)
 
@@ -108,15 +108,5 @@ def create_databases():
 	else:
 		print("Created `%s` database on FeatureBase Cloud." % fb_table)
 
-	# check status
-	if fb_query.get('error'):
-		if "exists" in fb_query.get('error'):
-			print("FeatureBase database `%s` already exists." % fb_table)
-		else:
-			print(fb_query.get("explain"))
-			print("FeatureBase returned an error. Check your credentials or create statement!")
-			sys.exit()
-	else:
-		print("Created `%s` database on FeatureBase Cloud." % fb_table)
 
 

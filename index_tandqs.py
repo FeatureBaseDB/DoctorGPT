@@ -47,35 +47,44 @@ for page in doc_pages:
 		words = doc_fragments.get('fragment')
 
 		# document info
-		page_num = page.get('_id').split("_")[0]
+		page_id = page.get('_id')
+		page_num = page_id.split("_")[0]
 		filename = page.get('filename')
 		title = page.get('title')
 
 		# status update
-		print("Extracting for page %s of %s." % (page_num, filename))
+		print("system> Extracting for page %s of %s." % (page_num, filename))
 
 		# handle periodic completion errors
 		# AI completions need valid dictionaries, and sometimes GPT doesn't return a complete dict
 		# we try 5 times, but usually trying just one more time works
 		for x in range(5):
+			# make sure we have enough to operate on
+			if len(words) < 6:
+				document.setdefault('error', "Not enough words.")
+				break
+
 			# call the AI with a document containing "words"
 			document = ai("gpt_keyterms", {"words": words})
-			print(document)
+
 			if not document.get('error', None) and document.get('keyterms'):
 				break
 			else:
-				print(document.get('error'))
-				print("Sleeping for 5 seconds and then trying again.")
+				print("system> ", document.get('error'))
+				print("system> Sleeping for 5 seconds and then trying again.")
 				time.sleep(5)
 
 		# if we don't have an error
 		if not document.get('error', None):
 			if document.get('keyterms') and document.get('question'):
+				print("system> Keyterms found: ", ", ".join(document.get('keyterms')))
+				print("system> Question formed: ", document.get('question'))
+				print("system> Inserting into FeatureBase...")
 				for keyterm in document.get('keyterms'):
-					sql = "INSERT INTO doc_keyterms VALUES('%s', '%s', '%s', ['%s'], [%s]);" % (keyterm.lower(), filename, title, uuid, page_num)
+					sql = "INSERT INTO doc_keyterms VALUES('%s', ['%s'], ['%s'], ['%s'], ['%s']);" % (keyterm.lower(), filename, title, uuid, page_id)
 					featurebase_query({"sql": sql})
-				sql = "INSERT INTO doc_questions VALUES('%s', '%s', '%s', '%s', %s, %s, '', '')" % (uuid, filename, title, document.get('question'), document.get('keyterms'), page_num)
+				sql = "INSERT INTO doc_questions VALUES('%s', '%s', '%s', '%s', %s, '%s', '', '')" % (uuid, filename, title, document.get('question'), document.get('keyterms'), page_id)
 				featurebase_query({"sql": sql})
 			else:
-				print("No keyterms or question found?")
-				print(document)
+				print("system> No keyterms or question found?")
+				print(document.get('error'))

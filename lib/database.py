@@ -41,6 +41,7 @@ def featurebase_query(document):
 	# try to run the query
 	try:
 		sql = document.get("sql")
+		# print(sql)
 
 		result = requests.post(
 			config.featurebase_endpoint+"/query/sql",
@@ -205,6 +206,8 @@ def weaviate_query(concepts, collection, fields, move_tos=[], filename=""):
 		print("================")
 		print(ex)
 		print("================")
+
+	# print(_records)
 	return _records
 
 

@@ -147,14 +147,17 @@ for page_num in range(start_page, num_pages+1):
 			continue
 
 		# build up the words string
-		words = words + " " + entry.replace("\n", " ")
+		words = words + " " + entry.replace("\n", "\\n")
 
 		# process words if the chunk is > 512 characters or we are on the last chunk
 		if len(words) > 512 or i == len(tokenizer.tokenize(_text)) - 1:
+			# build a page_id for the page fragment
+			page_id = "%s_%s" % (page_num, hashlib.md5(filename.encode()).hexdigest()[:8])
+
 			# create a document to send to weaviate
 			document = {
 				"filename": filename,
-				"page_number": page_num,
+				"page_id": page_id,
 				"fragment": words.strip()
 			}
 
@@ -168,15 +171,12 @@ for page_num in range(start_page, num_pages+1):
 					print(ex)
 					time.sleep(5)
 
-			# build a page_id for the page fragment
-			page_id = "%s_%s" % (page_num, hashlib.md5(filename.encode()).hexdigest()[:8])
-
 			# update featurebase doc_pages table
 			sql = "INSERT INTO doc_pages VALUES('%s', '%s', '%s', ['%s']);" % (page_id, filename, title.replace("'", ""), uuid)
 			featurebase_query({"sql": sql})
 
 			# update featurebase doc_fragments
-			sql = "INSERT INTO doc_fragments VALUES('%s', '%s', '%s', %s, %s, '%s', '%s');" % (uuid, filename, title.replace("'", ""), page_num, fragment_num, prev_uuid, words.replace("'", ""))
+			sql = "INSERT INTO doc_fragments VALUES('%s', '%s', '%s', %s, '%s', %s, '%s', '%s');" % (uuid, filename, title.replace("'", ""), page_num, page_id, fragment_num, prev_uuid, words.replace("'", ""))
 			featurebase_query({"sql": sql})
 
 			# track the previous UUID for the linked list

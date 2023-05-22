@@ -1,9 +1,15 @@
-1. Determine the TOP three (3) keyterms and a question related to them from a portion of PDF and output a Python dictionary with the information.
+1. Determine the TOP three (3) simple keyterms and a related question from a portion of PDF and output a Python dictionary with the information.
 2. The page fragment of the PDF contains:
 """
 $words
 """
-3. Output a python dictionary for the answers:
-# python dict with max (3) THREE keyterms store using the "keyterms" key and a "question" key containing the best question relevant to the fragment
+3. Output a python dictionary:
+# example for you
 # pdf_meta = {"keyterms": ['balloon', 'pop gun', 'stuffed bear'], "question": "How did Pooh get away from the bees in the tree?"}
+# a. create a question that is related to the fragment's contents
+# b. please do not store things about winnie-the-pooh
+# c. use keyterms that may have semantic meaning in other related documents
+# d. create keyterms that are simple
+# e. do not use stop words for keyterms
+# f. keep your eye out for errors from google vison which may confuse l for i or 1 for i, like in 'ai' or 'llm' instead of '11m'
 pdf_meta = {

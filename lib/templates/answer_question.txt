@@ -6,4 +6,5 @@ $text
 3. Output a python dictionary for the answer to "$question":
 # python dict example with the question and answer
 # pdf_meta = {"question": "Who is Winnie-the-Pooh?", "answer": "Winnie-the-Pooh is a fictional stuffed bear who loves honey."}
+# complete the Python dict
 pdf_meta = {"question": "$question",

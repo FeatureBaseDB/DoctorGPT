@@ -23,9 +23,10 @@
             },
             {
                 "dataType": [
-                    "int"
+                    "string"
                 ],
-                "name": "page_number"
+                "name": "page_id",
+                "tokenization": "field"
             },
             {
                 "dataType": [

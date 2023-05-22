@@ -78,31 +78,31 @@ for question in fb_questions:
 		for fragment in weaviate_fragments:
 			fragment_id = fragment.get("_additional").get('id')
 			if fragment.get('filename') == filename and fragment_id != question.get('_id') and fragment_id != prev_fragment.get('_id') and fragment_id != next_fragment.get('_id'):
-				if fragment.get("_additional").get('distance') < 0.15:
+				if fragment.get("_additional").get('distance') < 0.23:
 					if len(fragment_string) < 2048:
 						fragment_string = fragment_string + "\nADDITIONAL CONTEXT:\n " + fragment.get('fragment')
 					else:
 						break
 
 		# build a document for sending to the ai
-		document = {"origin_id": uuid, "question": question.get('question'), "text": fragment_string.strip(), "title": question.get('title'), "filename": question.get('filename'), "page_number": question.get('page_num')}
+		document = {"origin_id": uuid, "question": question.get('question'), "text": fragment_string.strip(), "title": question.get('title'), "filename": question.get('filename'), "page_id": question.get('page_id')}
 		document = ai("answer_question", document)
-
-		# get the probability and dimensionality
-		document = ai("measure_probdim", document)
 
 		# update if we have a good answer
 		if document.get('error') == None:
 			# print our results
 			print("bot>", document.get('answer'))
-			# print("bot>", document.get('probability'), document.get('dimensionality'))
-			print("bot>", document.get('probability'))
 
 			# update weaviate with query and answer information
-			_uuid = weaviate_update(document, "QandAs")
+			try:
+				# print(document)
+				_uuid = weaviate_update(document, "QandAs")
+				# print(_uuid)
+			except:
+				print("system> Error inserting into Weaviate.")
 
 			# update featurebase doc_questions
-			sql = "INSERT INTO doc_questions VALUES('%s', '%s', '%s', '%s', %s, %s, '%s', '%s')" % (uuid, question.get('filename'), question.get('title'), question.get('question'), keyterms, question.get('page_num'), document.get('answer').replace("'", ""), document.get('probability'))
+			sql = "INSERT INTO doc_questions VALUES('%s', '%s', '%s', '%s', %s, '%s', '%s', '%s')" % (uuid, question.get('filename'), question.get('title'), question.get('question'), keyterms, question.get('page_id'), document.get('answer').replace("'", "").replace("\n", "\\n"), "👍")
 			featurebase_query({"sql": sql})
 		else:
 			print("bot> ", document.get('error'), document.get('answer'))

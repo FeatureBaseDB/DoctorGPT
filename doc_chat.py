@@ -28,6 +28,14 @@ filename = files[int(file_number)]
 # user
 username = random_string(4)
 
+def output_fragments(object, str):
+	for item in object:
+		print(str, "===============================================================================")
+		print(item.get('_additional').get("distance"))
+		print(str, "===============================================================================")
+		print(item.get('fragment'))
+		print(str, "===============================================================================")
+
 from collections import defaultdict
 
 def extract_keyterms(data):
@@ -139,7 +147,13 @@ while True:
 	# get related fragments to the question concept while moving toward existing keyterms
 	top_referenced_uuids = []
 	start_time = time.time()
-	weaviate_fragments = weaviate_query([question], "PDFs", ["fragment", "filename"], keyterms, filename)
+	weaviate_fragments = weaviate_query([question], "PDFs", ["fragment"], keyterms, filename)
+	# output_fragments(weaviate_fragments, "with keyterms")
+	weaviate_alternates = weaviate_query([question], "PDFs", ["fragment"], [], filename)
+	# output_fragments(weaviate_alternates, "without keyterms")
+	# weaviate_fragments = weaviate_alternates
+
+
 	end_time = time.time()
 	elapsed_time = end_time - start_time
 	print("system> Queried Weaviate for fragments in:", elapsed_time, "seconds")

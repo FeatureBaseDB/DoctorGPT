@@ -1,4 +1,4 @@
-1. Determine the TOP three (3) simple keyterms and a related question from a portion of PDF and output a Python dictionary with the information.
+1. Determine the TOP four (3) keyterms and related question from a portion/fragment of PDF and output a Python dictionary with the information.
 2. The page fragment of the PDF contains:
 """
 $words
@@ -7,9 +7,7 @@ $words
 # example for you
 # pdf_meta = {"keyterms": ['balloon', 'pop gun', 'stuffed bear'], "question": "How did Pooh get away from the bees in the tree?"}
 # a. create a question that is related to the fragment's contents
-# b. please do not store things about winnie-the-pooh
-# c. use keyterms that may have semantic meaning in other related documents
-# d. create keyterms that are simple
-# e. do not use stop words for keyterms
-# f. keep your eye out for errors from google vison which may confuse l for i or 1 for i, like in 'ai' or 'llm' instead of '11m'
+# b. please do not use anything related to winnie-the-pooh, unless the document is discussing winnie-the-pooh
+# c. As you analyze this document, please remember to exclude stop words from the keyterms. Make sure each topic or section is represented by a variety of relevant index entries, capturing the essence and main points of each section. Consider the potential audience for this document. Try to understand what kind of index entries they're likely to search for. What terms, ideas, or topics would be most useful or interesting to them? Lastly, please maintain consistency in the form of terms you use. Whether it's singular vs. plural, or capitalization, adhere to standard indexing conventions. This consistency is key for user experience and the overall readability of the document.
+# d. keep your eye out for errors from google vison which may confuse 1 for i or l like in 'ai' or 'llm'
 pdf_meta = {

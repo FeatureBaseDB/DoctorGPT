@@ -1,7 +1,7 @@
 # DoctorGPT | Document Organization & Chat | 💻📚💡
 DoctorGPT implements advanced LLM prompting for organizing, indexing and discussing PDFs, and does so without using any type of opinionated prompt processing frameworks, like langchain. The project aims to provide a reference solution for scratch building intelligent prompting systems which use documents for source truth.
 
-For those of you that expected this to act as a medical doctor, we can't recommend that but it would be possible if you fed it relevant medical documents. Keep in mind that there are also doctors of physics, philosophy and math.
+For those of you that expected this to act as a medical doctor, we can't recommend that but it would be possible if you fed it relevant medical documents. Keep in mind that there are also doctors of physics, philosophy and math, the later two of which may or may not have crazy hair.
 
 ```
 Entering conversation with DoctorGPT.pdf. Use ctrl-C to end interaction.

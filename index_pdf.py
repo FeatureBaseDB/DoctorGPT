@@ -121,7 +121,6 @@ for page_num in range(start_page, num_pages+1):
 		text = texts[0]
 	except:
 		print("error in detection")
-		print(texts)
 
 	# get title from the first page if we don't have it
 	if title is None and page_num == 1:
@@ -147,17 +146,14 @@ for page_num in range(start_page, num_pages+1):
 			continue
 
 		# build up the words string
-		words = words + " " + entry.replace("\n", "\\n")
+		words = words + " " + entry.replace("\n", " ")
 
 		# process words if the chunk is > 512 characters or we are on the last chunk
 		if len(words) > 512 or i == len(tokenizer.tokenize(_text)) - 1:
-			# build a page_id for the page fragment
-			page_id = "%s_%s" % (page_num, hashlib.md5(filename.encode()).hexdigest()[:8])
-
 			# create a document to send to weaviate
 			document = {
 				"filename": filename,
-				"page_id": page_id,
+				"page_number": page_num,
 				"fragment": words.strip()
 			}
 
@@ -170,6 +166,9 @@ for page_num in range(start_page, num_pages+1):
 				except Exception as ex:
 					print(ex)
 					time.sleep(5)
+
+			# build a page_id for the page fragment
+			page_id = "%s_%s" % (page_num, hashlib.md5(filename.encode()).hexdigest()[:8])
 
 			# update featurebase doc_pages table
 			sql = "INSERT INTO doc_pages VALUES('%s', '%s', '%s', ['%s']);" % (page_id, filename, title.replace("'", ""), uuid)

@@ -48,7 +48,7 @@ response = requests.post(
     json=data,
     headers=headers
 )
-
+print(response.json())
 try:
     print("Place the following token in config.py under `featurebase_token`: %s " % response.json().get('secret'))
 except:

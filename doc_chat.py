@@ -187,7 +187,8 @@ while True:
 
 	for result in fragment_results:
 		title = result.get('title')
-		fragments = fragments + " " + result.get('fragment')
+		if len(fragments) < 7779:
+			fragments = fragments + " " + result.get('fragment')
 
 	# indicate we're calling the AI
 	start_time = time.time()
@@ -218,16 +219,16 @@ while True:
 
 		# insert the question into weaviate QandAs
 		uuid = weaviate_update(document_question, "PDFs")
-
-		# update featurebase doc_fragments
-		sql = "INSERT INTO doc_fragments VALUES('%s', '%s', '%s', %s, 'user-%s', %s, '%s', '%s');" % (uuid, filename, title.replace("'", ""), 0, username, 0, "USER_CHAT", document_question.get('fragment').replace("'", "").replace("\n", "\\n"))
-		featurebase_query({"sql": sql})
-
-		if document_question.get('keyterms') and question:
-			print("system> Keyterms linked: ", ", ".join(document_question.get('keyterms')))
-			print("system> Inserting into FeatureBase...")
-			for keyterm in document_question.get('keyterms'):
-				sql = "INSERT INTO doc_keyterms VALUES('%s', ['%s'], ['%s'], ['%s'], ['%s']);" % (keyterm.lower(), filename, title, uuid, "chat_%s" % username)
-				featurebase_query({"sql": sql})
-			sql = "INSERT INTO doc_questions VALUES('%s', '%s', '%s', '%s', %s, '%s', '', '')" % (uuid, filename, title, document_question.get('question'), document_question.get('keyterms'), "chat_%s" % username)
+		if uuid != "FAILED":
+			# update featurebase doc_fragments
+			sql = "INSERT INTO doc_fragments VALUES('%s', '%s', '%s', %s, 'user-%s', %s, '%s', '%s');" % (uuid, filename, title.replace("'", ""), 0, username, 0, "USER_CHAT", document_question.get('fragment').replace("'", "").replace("\n", "\\n"))
 			featurebase_query({"sql": sql})
+
+			if document_question.get('keyterms') and question:
+				print("system> Keyterms linked: ", ", ".join(document_question.get('keyterms')))
+				print("system> Inserting into FeatureBase...")
+				for keyterm in document_question.get('keyterms'):
+					sql = "INSERT INTO doc_keyterms VALUES('%s', ['%s'], ['%s'], ['%s'], ['%s']);" % (keyterm.lower(), filename, title, uuid, "chat_%s" % username)
+					featurebase_query({"sql": sql})
+				sql = "INSERT INTO doc_questions VALUES('%s', '%s', '%s', '%s', %s, '%s', '', '')" % (uuid, filename, title, document_question.get('question'), document_question.get('keyterms'), "chat_%s" % username)
+				featurebase_query({"sql": sql})

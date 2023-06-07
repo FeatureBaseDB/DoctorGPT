@@ -3,6 +3,7 @@ import sys
 import weaviate
 import random
 import string
+import time
 
 import requests
 from string import Template
@@ -41,8 +42,17 @@ def featurebase_query(document):
 	# try to run the query
 	try:
 		sql = document.get("sql")
-		# print(sql)
 
+		# Specify the file path where you want to save the SQL string
+		"""
+		file_path = "output.sql"
+
+		# Open the file in write mode
+		with open(file_path, "a") as file:
+			# Write the SQL string to the file
+			file.write("%s\n" % sql)
+		"""
+		
 		result = requests.post(
 			config.featurebase_endpoint+"/query/sql",
 			data=sql.encode('utf-8'),
@@ -116,16 +126,26 @@ def weaviate_schema(schema="none"):
 
 # send a document to a class/collection
 def weaviate_update(document, collection):
-	# connect to weaviate
-	weaviate_client = weaviate.Client(
-		url = config.weaviate_endpoint,
-		additional_headers = {
-			"X-OpenAI-Api-Key": config.openai_token,
-			"Authorization": "Bearer %s" % config.weaviate_token 
-		}
-	)
+	for x in range(5):
+		# try 5 times because weaviate fails sometimes
+		try:
+			# connect to weaviate
+			weaviate_client = weaviate.Client(
+				url = config.weaviate_endpoint,
+				additional_headers = {
+					"X-OpenAI-Api-Key": config.openai_token,
+					"Authorization": "Bearer %s" % config.weaviate_token 
+				}
+			)
 
-	data_uuid = weaviate_client.data_object.create(document, collection)
+			data_uuid = weaviate_client.data_object.create(document, collection)
+			break
+		except:
+			data_uuid = "FAILED"
+			print(document)
+		
+		print("system> Giving Weaviate a short break because it's erroring.")
+		time.sleep(5)
 
 	return data_uuid
 
@@ -172,6 +192,16 @@ def weaviate_query(concepts, collection, fields, move_tos=[], filename=""):
 	  }
 	}
 
+	additional_clause = {
+	  "featureProjection": [
+	    "vector"
+	  ]
+	}
+
+	additional_setting = {
+	  "dimensions": 3
+	}
+
 	if filename == "":
 		# fetch result and fields
 		result = (
@@ -179,6 +209,7 @@ def weaviate_query(concepts, collection, fields, move_tos=[], filename=""):
 			.get(collection, fields)
 			.with_near_text(nearText)
 			.with_additional(["certainty", "distance", "id"])
+			.with_additional((additional_clause, additional_setting))
 			.with_limit(2000)
 			.do()
 		)
@@ -206,8 +237,6 @@ def weaviate_query(concepts, collection, fields, move_tos=[], filename=""):
 		print("================")
 		print(ex)
 		print("================")
-
-	# print(_records)
 	return _records
 
 

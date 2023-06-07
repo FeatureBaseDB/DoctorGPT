@@ -1,5 +1,7 @@
 # DoctorGPT | Document Organization & Chat | 💻📚💡
-DoctorGPT implements advanced LLM prompting for organizing, indexing and discussing PDFs, and does so without using any type of opinionated prompt processing frameworks, like langchain. The project aims to provide a reference solution for scratch building intelligent prompting systems which use documents for source truth.
+DoctorGPT implements advanced LLM prompting for organizing, indexing and discussing PDFs, and does so without using any type of opinionated prompt processing frameworks, like [Langchain](https://github.com/hwchase17/langchain). The project aims to provide a reference solution for scratch building intelligent prompting systems which use documents for source truth.
+
+For those of you that expected this to act as a medical doctor, we can't recommend that but it would be possible if you fed it relevant medical documents. Keep in mind that there are also doctors of physics, philosophy and math, the later two of which may or may not have crazy hair.
 
 ```
 Entering conversation with DoctorGPT.pdf. Use ctrl-C to end interaction.
@@ -8,7 +10,7 @@ bot> Querying GPT...
 bot> My name is DoctorGPT and I'm an AI agent designed to help you organize and manage PDF documents. Just like Doc Brown, I'm here to help you navigate the future of PDFs.
 ```
 
-The repository uses tools such as [PyPDF2](https://pypi.org/project/PyPDF2/) and [pdf2image](https://pypi.org/project/pdf2image/) for PDF processing, [Google Vision](https://cloud.google.com/vision) for text extraction from images, [nltk](https://www.nltk.org/) for text fragment/chunk extraction, [Weaviate](https://weaviate.io/) for dense vector search and embedding handling, and [FeatureBase](https://featurebase.com/) for back of the book indexing and graph traversal of terms and questions.
+The repository uses tools such as [PyPDF2](https://pypi.org/project/PyPDF2/) and [pdf2image](https://pypi.org/project/pdf2image/) for PDF processing, [Google Vision](https://cloud.google.com/vision) for text extraction from images, [nltk](https://www.nltk.org/) for text fragment/chunk extraction, [Weaviate](https://weaviate.io/) for dense vector search and embedding handling, and [FeatureBase](https://featurebase.com/) for back of the book indexing and graph traversal of terms, questions and document fragments.
 
 The project is installed, configured and run locally from the command line. You will need a [Google Cloud](https://cloud.google.com/) account with [Vision enabled](https://cloud.google.com/vision/docs/before-you-begin), an [OpenAI account](https://openai.com), a [FeatureBase cloud](https://cloud.featurebase.com) account and a [Weaviate cloud](https://console.weaviate.cloud/) account to run the code.
 

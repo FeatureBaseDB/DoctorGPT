@@ -107,6 +107,10 @@ Run the following to install the required packages, use the `pip` package for Py
 
 If you are installing on Windows, you will like need to install the `python-poppler` package manually. To do this, follow the instructions below.
 
+*NOTE*: You may need to install the Poppler project with `brew`:
+
+`brew install poppler`
+
 #### Installing Poppler with MSYS2 (only required if using Windows)
 ##### Install MSYS2
 

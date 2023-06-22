@@ -38,7 +38,7 @@ for question in fb_questions:
 		sql = "DELETE FROM doc_questions WHERE _id = '%s'" % remove_uuid
 		featurebase_query({"sql": sql})
 
-	if question.get('answer', "null") == "null" or question.get('answer', "None") == "None" or question.get('answer') == None:
+	if question.get('answer', "null") == "null" or question.get('answer', "None") == "None" or question.get('answer') == None or question.get('answer') == '':
 		print("system>", question.get('question'))
 		
 		# get question's original text fragment

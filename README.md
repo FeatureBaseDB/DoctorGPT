@@ -20,7 +20,7 @@ The project is installed, configured and run locally from the command line. You 
 The process of indexing a document is divided into three main steps:
 
 1. A PDF is processed into images. These images are then used for text extraction with the help of Google Vision. Early concepts of this idea have been previously implemented at [Mitta.us](https://mitta.us/).
-2. The extracted text is chunked by nltk and stored in FeatureBase, which handles the [Instructor Large](https://huggingface.co/hkunlp/instructor-large) embeddomgs. During this indexing step, a [back-of-the-book index](https://en.wikipedia.org/wiki/Index_(publishing)) is also created, and the keyterms are stored in an inverted index in FeatureBase along with the text chunk's UUIDs, the page numbers and vectors.
+2. The extracted text is chunked by nltk and stored in FeatureBase, which handles the [Instructor Large](https://huggingface.co/hkunlp/instructor-large) embeddings. During this indexing step, a [back-of-the-book index](https://en.wikipedia.org/wiki/Index_(publishing)) is also created, and the keyterms are stored in an inverted index in FeatureBase along with the text chunk's UUIDs, the page numbers and vectors.
 3. During interactions with the LLM, FeatureBase's set functions and vector comparison functions are used to determine the most relevant text to use for building prompts. Texts are passed around as documents and augmented with queries to the LLM as well as use of any documents that are related through the indexes in FeatureBase.
 
 ## Install Instructions

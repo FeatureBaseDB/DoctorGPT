@@ -1,112 +1,62 @@
+import os
 import string
 import random
+import uuid
+import contextlib
+import torch
+
+from InstructorEmbedding import INSTRUCTOR
 
 from lib.database import featurebase_query
+
+import warnings
+warnings.filterwarnings("ignore")
 
 def random_string(size=6, chars=string.ascii_letters + string.digits):
 	return ''.join(random.choice(chars) for _ in range(size))
 
-def drop_databases():
-	# create FeatureBase database
-	fb_query = featurebase_query(
-		{
-			"sql": "DROP TABLE doc_pages;"
-		}
-	)
-	# create FeatureBase database
-	fb_query = featurebase_query(
-		{
-			"sql": "DROP TABLE doc_keyterms;"
-		}
-	)
-	# create FeatureBase database
-	fb_query = featurebase_query(
-		{
-			"sql": "DROP TABLE doc_questions;"
-		}
-	)
-	# create FeatureBase database
-	fb_query = featurebase_query(
-		{
-			"sql": "DROP TABLE doc_fragments;"
-		}
-	)
-def create_databases():
-	# create FeatureBase database
-	fb_table = "doc_pages"
-	fb_query = featurebase_query(
-		{
-			"sql": "CREATE TABLE %s (_id string, filename string, title string, uuids stringset);" % fb_table
-		}
-	)
 
-	# check status
-	if fb_query.get('error'):
-		if "exists" in fb_query.get('error'):
-			print("FeatureBase database `%s` already exists." % fb_table)
-		else:
-			print(fb_query.get("explain"))
-			print("FeatureBase returned an error. Check your credentials or create statement!")
-			sys.exit()
-	else:
-		print("Created `%s` database on FeatureBase Cloud." % fb_table)
+def embeddings(string_array):
 
-	# create FeatureBase database
-	fb_table = "doc_keyterms"
-	fb_query = featurebase_query(
-		{
-			"sql": "CREATE TABLE %s (_id string, filenames stringset, titles stringset, uuids stringset, page_ids stringset);" % fb_table
-		}
-	)
+	# idiots be idioting
+	# supresses 'load INSTRUCTOR_Transformer' & 'max_seq_length 512' outputs
+	with contextlib.redirect_stdout(None):
 
-	# check status
-	if fb_query.get('error'):
-		if "exists" in fb_query.get('error'):
-			print("FeatureBase database `%s` already exists." % fb_table)
-		else:
-			print(fb_query.get("explain"))
-			print("FeatureBase returned an error. Check your credentials or create statement!")
-			sys.exit()
-	else:
-		print("Created `%s` database on FeatureBase Cloud." % fb_table)
+		# load the model
+		model = INSTRUCTOR('hkunlp/instructor-large')
 
-	# create FeatureBase database
-	fb_table = "doc_questions"
-	fb_query = featurebase_query(
-		{
-			"sql": "CREATE TABLE %s (_id string, filename string, title string, question string, keyterms stringset, page_id string, answer string, probability string);" % fb_table
-		}
-	)
+		# encode the strings
+		embeddings = model.encode(string_array, output_value="sentence_embedding").tolist()
 
-	# check status
-	if fb_query.get('error'):
-		if "exists" in fb_query.get('error'):
-			print("FeatureBase database `%s` already exists." % fb_table)
-		else:
-			print(fb_query.get("explain"))
-			print("FeatureBase returned an error. Check your credentials or create statement!")
-			sys.exit()
-	else:
-		print("Created `%s` database on FeatureBase Cloud." % fb_table)
+		# build results list
+		results = []
 
-	# create FeatureBase database
-	fb_table = "doc_fragments"
-	fb_query = featurebase_query(
-		{
-			"sql": "CREATE TABLE %s (_id string, filename string, title string, page_num int, page_id string, fragment_num int, prev_id string, fragment string);" % fb_table
-		}
-	)
+		# add to the results
+		for i, embedding in enumerate(embeddings):
+			_uuid = uuid.uuid4()
+			processed_embedding = [float("{:.15f}".format(number)) for number in embedding]
 
-	# check status
-	if fb_query.get('error'):
-		if "exists" in fb_query.get('error'):
-			print("FeatureBase database `%s` already exists." % fb_table)
-		else:
-			print(fb_query.get("explain"))
-			print("FeatureBase returned an error. Check your credentials or create statement!")
-			sys.exit()
-	else:
-		print("Created `%s` database on FeatureBase Cloud." % fb_table)
+			results.append({"uuid": str(_uuid), "string": string_array[i], "embedding": processed_embedding})
 
+	return results
 
+def get_pdf_filename():
+    dir_path = "./documents/"
+    files = os.listdir(dir_path)
 
+    pdf_files = [file for file in files if file.lower().endswith(".pdf")]
+
+    print("\nPDF Documents\n===================")
+    for i, file in enumerate(pdf_files):
+        print("%s. %s" % (i, file))
+
+    try:
+        index = int(input("Enter the index number of the document: "))
+        if 0 <= index < len(pdf_files):
+            return pdf_files[index]
+        else:
+            print("Invalid index number.")
+            return None
+    except ValueError:
+        print("Invalid input. Please enter a valid index number.")
+        return None

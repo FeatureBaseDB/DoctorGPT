@@ -1,6 +1,5 @@
 import os
 import sys
-import weaviate
 import random
 import string
 import time
@@ -28,6 +27,35 @@ def random_string(size=6, chars=string.ascii_letters + string.digits):
 ###############
 # FeatureBase #
 ###############
+
+def drop_database(name):
+	# create FeatureBase database
+	fb_query = featurebase_query(
+		{
+			"sql": f"DROP TABLE {name};"
+		}
+	)
+
+
+def create_database(name, schema):
+	# create FeatureBase database
+	fb_query = featurebase_query(
+		{
+			"sql": f"CREATE TABLE {name} {schema};"
+		}
+	)
+
+	# check status
+	if fb_query.get('error'):
+		if "exists" in fb_query.get('error'):
+			print(f"FeatureBase database `{name}` already exists.")
+		else:
+			print(fb_query.get("explain"))
+			print("FeatureBase returned an error. Check your credentials or create statement!")
+	else:
+		print(f"Created `{name}` database on FeatureBase Cloud.")
+
+
 def apply_schema(list_of_lists, schema):
 	result = []
 	for row in list_of_lists:
@@ -37,8 +65,9 @@ def apply_schema(list_of_lists, schema):
 		result.append(dict_row)
 	return result
 
+
 # "sql" key in document should have a valid query
-def featurebase_query(document):
+def featurebase_query(document, debug=False):
 	# try to run the query
 	try:
 		sql = document.get("sql")
@@ -60,10 +89,15 @@ def featurebase_query(document):
 				'Content-Type': 'text/plain',
 				'X-API-Key': '%s' % config.featurebase_token,
 			}
-		).json()
+		)
+		if debug:
+			print(document.get('sql'))
+			print(result.text)
+		result = result.json()
 
 	except Exception as ex:
 		# bad query?
+		print("error: ", ex)
 		exc_type, exc_obj, exc_tb = sys.exc_info()
 		document['error'] = "%s: %s" % (exc_tb.tb_lineno, ex)
 		return document
@@ -85,197 +119,10 @@ def featurebase_query(document):
 			field_names.append(field.get('name'))
 
 		document['results'] = apply_schema(result.get('data'), field_names)
-	
 	else:
 		document['explain'] = "Query was successful, but returned no data."
 
 	return document
 
 
-############
-# Weaviate #
-############
-
-def weaviate_schema(schema="none"):
-	# connect to weaviate
-	weaviate_client = weaviate.Client(
-		url = config.weaviate_endpoint,
-		additional_headers = {
-			"X-OpenAI-Api-Key": config.openai_token,
-			"Authorization": "Bearer %s" % config.weaviate_token 
-		}
-	)
-
-	# connect to weaviate and ensure schema exists
-	try:
-		schema = weaviate_client.schema.get(schema)
-	
-	except Exception as ex:
-		print("Trying to create schema: %s" % schema)
-		try:
-			# show vector database connection error
-			dir_path = os.path.dirname(os.path.realpath(__file__))
-			schema_file = os.path.join(dir_path, "schema/%s.json" % schema)
-			weaviate_client.schema.create(schema_file)
-			schema = weaviate_client.schema.get(schema)
-		except Exception as ex:
-			print(ex)
-			schema = {"error": "no schema"}
-
-	return schema
-
-# send a document to a class/collection
-def weaviate_update(document, collection):
-	for x in range(5):
-		# try 5 times because weaviate fails sometimes
-		try:
-			# connect to weaviate
-			weaviate_client = weaviate.Client(
-				url = config.weaviate_endpoint,
-				additional_headers = {
-					"X-OpenAI-Api-Key": config.openai_token,
-					"Authorization": "Bearer %s" % config.weaviate_token 
-				}
-			)
-
-			data_uuid = weaviate_client.data_object.create(document, collection)
-			break
-		except:
-			data_uuid = "FAILED"
-			print(document)
-		
-		print("system> Giving Weaviate a short break because it's erroring.")
-		time.sleep(5)
-
-	return data_uuid
-
-
-def weaviate_object(uuid, collection):
-	# connect to weaviate
-	weaviate_client = weaviate.Client(
-		url = config.weaviate_endpoint,
-		additional_headers = {
-			"X-OpenAI-Api-Key": config.openai_token,
-			"Authorization": "Bearer %s" % config.weaviate_token 
-		}
-	)
-	document = weaviate_client.data_object.get_by_id(
-	  uuid,
-	  class_name=collection,
-	  consistency_level=weaviate.data.replication.ConsistencyLevel.ONE
-	)
-
-	return(document)
-
-# query weaviate for matches
-def weaviate_query(concepts, collection, fields, move_tos=[], filename=""):
-	# connect to weaviate
-	weaviate_client = weaviate.Client(
-		url = config.weaviate_endpoint,
-		additional_headers = {
-			"X-OpenAI-Api-Key": config.openai_token,
-			"Authorization": "Bearer %s" % config.weaviate_token 
-		}
-	)
-
-	where_filter = {
-		"path": ["filename"],
-		"operator": "Equal",
-		"valueString": filename,
-	}
-
-	nearText = {
-	  "concepts": concepts,
-	  "moveTo": {
-	  	"concepts": move_tos,
-	  	"force": 0.5
-	  }
-	}
-
-	additional_clause = {
-	  "featureProjection": [
-	    "vector"
-	  ]
-	}
-
-	additional_setting = {
-	  "dimensions": 3
-	}
-
-	if filename == "":
-		# fetch result and fields
-		result = (
-			weaviate_client.query
-			.get(collection, fields)
-			.with_near_text(nearText)
-			.with_additional(["certainty", "distance", "id"])
-			.with_additional((additional_clause, additional_setting))
-			.with_limit(2000)
-			.do()
-		)
-	else:
-		# fetch result and fields
-		result = (
-			weaviate_client.query
-			.get(collection, fields)
-			.with_near_text(nearText)
-			.with_additional(["certainty", "distance", "id"])
-			.with_limit(20)
-			.with_where(where_filter)
-			.do()
-		)
-
-	_records = []
-
-	try:
-		results = result.get('data').get('Get').get(collection)
-		for record in results:
-			_records.append(record)
-
-	except Exception as ex:
-		print("likely no records for %s" % collection)
-		print("================")
-		print(ex)
-		print("================")
-	return _records
-
-
-def weaviate_delete_schema(collection):
-	# connect to weaviate
-	weaviate_client = weaviate.Client(
-		url = config.weaviate_endpoint,
-		additional_headers = {
-			"X-OpenAI-Api-Key": config.openai_token,
-			"Authorization": "Bearer %s" % config.weaviate_token
-		}
-	)
-
-	if collection == "force_all":
-		weaviate_client.schema.delete_all()
-	else:
-		try:
-			weaviate_client.schema.delete_class(collection)
-		except Exception as ex:
-			print(ex)
-
-	return
-
-
-# delete a document from weaviate
-def weaviate_delete_document(uuid, collection):
-	# connect to weaviate
-	weaviate_client = weaviate.Client(
-		url = config.weaviate_endpoint,
-		additional_headers = {
-			"X-OpenAI-Api-Key": config.openai_token,
-			"Authorization": "Bearer %s" % config.weaviate_token
-		}
-	)
-
-	try:
-		weaviate_client.data_object.delete(uuid, collection)
-	except Exception as ex:
-		print(ex)
-
-	return
 

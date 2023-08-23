@@ -1,6 +1,3 @@
-from lib.util import drop_databases;
-drop_databases()
-
-from lib.database import weaviate_delete_schema
-weaviate_delete_schema("PDFs")
-weaviate_delete_schema("QandAs")
+from lib.database import drop_database
+for name in ["doc_pages", "doc_keyterms", "doc_questions", "doc_fragments"]:
+	drop_database(name)

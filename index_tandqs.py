@@ -4,22 +4,22 @@ import os
 
 from lib.ai import ai
 
-from lib.database import featurebase_query
-from lib.util import create_databases
+# import database methods
+from lib.database import featurebase_query, create_database
+from lib.util import embeddings
 
-# create FeatureBase databases
-create_databases()
+# create the databases
+databases = []
+databases.append({"name": "doc_questions", "schema": "(_id string, filename string, title string, question string, keyterms stringset, page_id string, question_embedding vector(768));"})
+databases.append({"name": "doc_keyterms", "schema": "(_id string, filenames stringset, titles stringset, uuids stringset, page_ids stringset);"})
+for database in databases:
+	create_database(database.get('name'), database.get('schema'))
 
-# get files to index
-dir_path = "./documents/"
-files = os.listdir(dir_path)
-print("\nDocuments Directory\n===================")
-for i, file in enumerate(files):
-    print("%s." % i, file)
-
-# prompt for file entry
-file_number = input("Enter the number of the file to process: ")
-filename = files[int(file_number)]
+# select the file
+from lib.util import get_pdf_filename
+filename = get_pdf_filename()
+if filename:
+    print("Selected PDF:", filename)
 
 # read the pages in from the PDF
 sql = "SELECT * FROM doc_pages WHERE filename = '%s' ORDER BY _id;"  % filename
@@ -62,6 +62,7 @@ for page in doc_pages:
 			# make sure we have enough to operate on
 			if len(words) < 6:
 				document.setdefault('error', "Not enough words.")
+				print("system> Not enough words.")
 				break
 
 			# call the AI with a document containing "words"
@@ -83,8 +84,15 @@ for page in doc_pages:
 				for keyterm in document.get('keyterms'):
 					sql = "INSERT INTO doc_keyterms VALUES('%s', ['%s'], ['%s'], ['%s'], ['%s']);" % (keyterm.lower(), filename, title, uuid, page_id)
 					featurebase_query({"sql": sql})
-				sql = "INSERT INTO doc_questions VALUES('%s', '%s', '%s', '%s', %s, '%s', '', '')" % (uuid, filename, title, document.get('question'), document.get('keyterms'), page_id)
-				featurebase_query({"sql": sql})
+
+				# get question embedding (send in one get one back)
+				question_embedding = embeddings([document.get('question')])[0]
+
+				if len(question_embedding.get('embedding')) == 768:
+					sql = f"INSERT INTO doc_questions VALUES('{uuid}', '{filename}', '{title}', '{document.get('question')}', {document.get('keyterms')}, '{page_id}', {question_embedding.get('embedding')});"
+					featurebase_query({"sql": sql})
+				else:
+					print("system> Vectorization returned malformed vector. Skipping entry.")
 			else:
 				print("system> No keyterms or question found?")
 				print(document.get('error'))

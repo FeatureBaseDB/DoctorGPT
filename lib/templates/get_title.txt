@@ -4,7 +4,7 @@
 $text
 """
 3. Output a python dictionary for the answers:
-# python dict with title and author of a PDF
+# python dict with title and author of a PDF. Do not use all CAPS on the title.
 # example
 # pdf_meta = {"title": "Winnie-the-Pooh", "author": "A. A. Milne"}
 pdf_meta = {

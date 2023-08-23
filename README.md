@@ -10,9 +10,9 @@ bot> Querying GPT...
 bot> My name is DoctorGPT and I'm an AI agent designed to help you organize and manage PDF documents. Just like Doc Brown, I'm here to help you navigate the future of PDFs.
 ```
 
-The repository uses tools such as [PyPDF2](https://pypi.org/project/PyPDF2/) and [pdf2image](https://pypi.org/project/pdf2image/) for PDF processing, [Google Vision](https://cloud.google.com/vision) for text extraction from images, [nltk](https://www.nltk.org/) for text fragment/chunk extraction, [Weaviate](https://weaviate.io/) for dense vector search and embedding handling, and [FeatureBase](https://featurebase.com/) for back of the book indexing and graph traversal of terms, questions and document fragments.
+The repository uses tools such as [PyPDF2](https://pypi.org/project/PyPDF2/) and [pdf2image](https://pypi.org/project/pdf2image/) for PDF processing, [Google Vision](https://cloud.google.com/vision) for text extraction from images, [nltk](https://www.nltk.org/) for text fragment/chunk extraction, [Instructor Large](https://huggingface.co/hkunlp/instructor-large) for local embeddings, and [FeatureBase](https://featurebase.com/) for vector simimlarity, back of the book indexing and graph traversal of terms, questions and document fragments.
 
-The project is installed, configured and run locally from the command line. You will need a [Google Cloud](https://cloud.google.com/) account with [Vision enabled](https://cloud.google.com/vision/docs/before-you-begin), an [OpenAI account](https://openai.com), a [FeatureBase cloud](https://cloud.featurebase.com) account and a [Weaviate cloud](https://console.weaviate.cloud/) account to run the code.
+The project is installed, configured and run locally from the command line. You will need a [Google Cloud](https://cloud.google.com/) account with [Vision enabled](https://cloud.google.com/vision/docs/before-you-begin), an [OpenAI account](https://openai.com), and a [FeatureBase cloud](https://cloud.featurebase.com) account to run the code.
 
 ![Doc Brown](https://github.com/FeatureBaseDB/DoctorGPT/blob/main/doc.jpg)
 
@@ -20,8 +20,8 @@ The project is installed, configured and run locally from the command line. You 
 The process of indexing a document is divided into three main steps:
 
 1. A PDF is processed into images. These images are then used for text extraction with the help of Google Vision. Early concepts of this idea have been previously implemented at [Mitta.us](https://mitta.us/).
-2. The extracted text is chunked by nltk and stored in Weaviate, which handles the [ada-002 embeddings](https://platform.openai.com/docs/guides/embeddings) using OpenAI's APIs. During this indexing step, a [back-of-the-book index](https://en.wikipedia.org/wiki/Index_(publishing)) is also created, and the keyterms are stored in an inverted index in FeatureBase along with the text chunk's UUIDs from Weaviate and the page numbers.
-3. During interactions with the LLM, Weaviate and FeatureBase are used together to determine the most relevant text to use for building prompts. Texts are passed around as documents and augmented with queries to the LLM as well as use of any documents that are related through the inverted index in FeatureBase.
+2. The extracted text is chunked by nltk and stored in FeatureBase, which handles the [Instructor Large](https://huggingface.co/hkunlp/instructor-large) embeddomgs. During this indexing step, a [back-of-the-book index](https://en.wikipedia.org/wiki/Index_(publishing)) is also created, and the keyterms are stored in an inverted index in FeatureBase along with the text chunk's UUIDs, the page numbers and vectors.
+3. During interactions with the LLM, FeatureBase's set functions and vector comparison functions are used to determine the most relevant text to use for building prompts. Texts are passed around as documents and augmented with queries to the LLM as well as use of any documents that are related through the indexes in FeatureBase.
 
 ## Install Instructions
 These instructions are long, so ensure you follow them carefully. It is suggested you use [ChatGPT](https://chat.openai.com/) to assist you with any errors. Simply paste in the entire content of this README into ChatGPT before asking your question about the install process.
@@ -40,18 +40,7 @@ On Windows, you'll want to do this last part in Powershell.
 Copy the `config.py.example` file to `config.py`. Use this file to store the various strings and tokens for the services utilized by this project.
 
 ### Cloud Setup
-To use Weaviate and FeatureBase with DoctorGPT, you will need to signup for their free cloud offerings. Follow the instructions below to get started.
-
-#### Weaviate Cloud
-Go to [Weaviate Cloud](https://console.weaviate.cloud/dashboard) and sign up for an account.
-
-After signup, navigate to the dashboard. Click on the "Create Cluster" button to create a new cluster. Name the cluster and ensure authentication is enabled.
-
-After the cluster is created, click on "Details" and click on the cluster URL to copy the cluster address. Paste this address into the value for the `weaviate_cluster` variable in the config file.
-
-Next, click on the key next to "Enabled Authentication" to copy the Weaviate token. Paste this into the config file for the `weaviate_token` variable.
-
-Your Weaviate Cloud config will be complete. This sandbox cluster will expire in 14 days.
+To use FeatureBase with DoctorGPT, you will need to signup for FeatureBase's free cloud offerings and have access to a Google Cloud account. Follow the instructions below to get started.
 
 #### FeatureBase Cloud
 Go to [FeatureBase Cloud](https://cloud.featurebase.com/) and sign up for an account.
@@ -61,15 +50,7 @@ Once you have signed up, you will be taken to the dashboard. Click on "Databases
 On the Databases page, click on your new database. Copy the `Query endpoint` by clicking on the URL. Paste the URL into the `config.py` file mentioned above and DELETE the `/query/sql` path on the end, leaving a URL without a `/` on the end.
 
 ##### FeatureBase Token
-Keeping in mind your username/password you used for FeatureBase, open a terminal and navigate into the repository's directory.
-
-Run the following to obtain a token for FeatureBase:
-
-`python fb_token.py`
-
-You'll receive output that includes the FeatureBase token. Place this token in the `config.py` file under the `featurebase_token` variable.
-
-*NOTE*: You may need to use `python3` instead of `python` on some Python installs.
+Naviagate to [https://cloud.featurebase.com/configuration/api-keys] to create a new token for use via the APIs. Copy the token secret, ignoring the ID for the token.
 
 #### Google Compute
 Go to [Google Cloud](https://console.cloud.google.com/) and signup for a cloud account. If you don't have a Google Cloud account, you will get a free credit for trying out the service.

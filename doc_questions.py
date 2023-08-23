@@ -1,29 +1,27 @@
-import weaviate
-import config
-import pprint
 import sys
 import json
 import os
 
-from lib.database import weaviate_schema, weaviate_update, weaviate_query, weaviate_object, featurebase_query
+import config
+
+from lib.database import featurebase_query, create_database
+from lib.util import embeddings
 from lib.ai import ai
 
-# create Weaviate schema
-weaviate_schema = weaviate_schema("QandAs")
+# create the databases
+databases = []
+databases.append({"name": "doc_answers", "schema": "(_id string, filename string, title string, answer string, keyterms stringset, page_id string, answer_embedding vector(768));"})
+for database in databases:
+	create_database(database.get('name'), database.get('schema'))
 
-# get files to index
-dir_path = "./documents/"
-files = os.listdir(dir_path)
-print("\nDocuments Directory\n===================")
-for i, file in enumerate(files):
-    print("%s." % i, file)
-
-# prompt for file entry
-file_number = input("Enter the number of the file to process: ")
-filename = files[int(file_number)]
+# select the file
+from lib.util import get_pdf_filename
+filename = get_pdf_filename()
+if filename:
+    print("Selected PDF:", filename)
 
 # select current questions
-sql = "SELECT * FROM doc_questions WHERE filename = '%s';" % filename
+sql = f"SELECT * FROM doc_questions WHERE filename = '{filename}';"
 fb_questions = featurebase_query({"sql": sql}).get('results')
 
 if not fb_questions:
@@ -32,11 +30,14 @@ if not fb_questions:
 
 # itterate over questions
 for question in fb_questions:
+	# add cleanup for bad data
+	"""
 	if question.get('question') == "None" or question.get('question') == "null":
 		print("Removing empty question.")
 		remove_uuid = question.get('_id')
 		sql = "DELETE FROM doc_questions WHERE _id = '%s'" % remove_uuid
 		featurebase_query({"sql": sql})
+	"""
 
 	if question.get('answer', "null") == "null" or question.get('answer', "None") == "None" or question.get('answer') == None or question.get('answer') == '':
 		print("system>", question.get('question'))
@@ -66,23 +67,43 @@ for question in fb_questions:
 			prev_fragment = {"fragment": ""}
 
 		# add half the previous fragment, the middle fragment and half the next fragment to concepts
-		concepts = prev_fragment.get('fragment')[:int(len(prev_fragment.get('fragment'))/2)] + " " + middle_fragment.get('fragment') + " " + next_fragment.get('fragment')[:int(len(next_fragment.get('fragment'))/2)]
+		fragment_string = prev_fragment.get('fragment')[:int(len(prev_fragment.get('fragment'))/2)] + " " + middle_fragment.get('fragment') + " " + next_fragment.get('fragment')[:int(len(next_fragment.get('fragment'))/2)]
 
-		# get related fragments to the concepts while moving toward existing keyterms
-		weaviate_fragments = weaviate_query([concepts], "PDFs", ["fragment", "filename"], keyterms, filename)
+		# get related fragments
+		related_uuids = []
 
-		# base fragment string
-		fragment_string = prev_fragment.get('fragment') + " " + middle_fragment.get('fragment') + " " + next_fragment.get('fragment')
+		# tanmoto query on keyterms in doc_questions
+		sql = f"SELECT *, tanimoto_coefficient(keyterms, (SELECT keyterms FROM doc_questions WHERE _id = '{uuid}')) AS distance FROM doc_questions ORDER BY distance DESC;))"
+		results = featurebase_query({"sql": sql}).get('results')
 
-		# operate over the fragments coming back from weaviate
-		for fragment in weaviate_fragments:
-			fragment_id = fragment.get("_additional").get('id')
-			if fragment.get('filename') == filename and fragment_id != question.get('_id') and fragment_id != prev_fragment.get('_id') and fragment_id != next_fragment.get('_id'):
-				if fragment.get("_additional").get('distance') < 0.23:
-					if len(fragment_string) < 2048:
-						fragment_string = fragment_string + "\nADDITIONAL CONTEXT:\n " + fragment.get('fragment')
-					else:
-						break
+		for i, result in enumerate(results):
+			if result.get('_id') not in related_uuids and result.get('_id') != uuid:
+				related_uuids.append(result.get('_id'))
+			if i > 4: # just grab 5
+				break
+
+		# vector embedding for the question's fragment
+		qf_embedding = embeddings([middle_fragment.get('fragment')])[0] # send one fragment (the middle one) and return one embedding
+
+		# query using the question's fragment embeddings, to get other related questions
+		sql = f"SELECT _id, question, cosine_distance({qf_embedding.get('embedding')}, question_embedding) AS distance FROM doc_questions ORDER BY distance ASC;"
+		results = featurebase_query({"sql": sql}).get('results')
+
+		for i, result in enumerate(results):
+			if result.get('_id') not in related_uuids and result.get('_id') != uuid:
+				related_uuids.append(result.get('_id'))
+			if i > 4: # just grab 5
+				break
+
+		# print(related_uuids)
+
+		for _uuid in related_uuids:
+			if len(fragment_string) < 2048:
+				sql = f"SELECT fragment FROM doc_fragments WHERE _id = '{_uuid}';"
+				results = featurebase_query({"sql": sql}).get('results')
+				fragment_string = fragment_string + results[0].get('fragment')
+
+		# print(fragment_string)
 
 		# build a document for sending to the ai
 		document = {"origin_id": uuid, "question": question.get('question'), "text": fragment_string.strip(), "title": question.get('title'), "filename": question.get('filename'), "page_id": question.get('page_id')}
@@ -93,17 +114,17 @@ for question in fb_questions:
 			# print our results
 			print("bot>", document.get('answer'))
 
-			# update weaviate with query and answer information
-			try:
-				# print(document)
-				_uuid = weaviate_update(document, "QandAs")
-				# print(_uuid)
-			except:
-				print("system> Error inserting into Weaviate.")
+			# embed the answer
+			answer_embedding = embeddings([document.get('answer')])[0]
 
-			# update featurebase doc_questions
-			sql = "INSERT INTO doc_questions VALUES('%s', '%s', '%s', '%s', %s, '%s', '%s', '%s')" % (uuid, question.get('filename'), question.get('title'), question.get('question'), keyterms, question.get('page_id'), document.get('answer').replace("'", "").replace("\n", "\\n"), "👍")
-			featurebase_query({"sql": sql})
+			# insert if we have a good answer and vector
+			if len(answer_embedding.get('embedding')) == 768:
+				# write to doc_answers
+				sql = f"INSERT INTO doc_answers VALUES('{uuid}', '{question.get('filename')}', '{question.get('title')}', '{document.get('answer')}', {keyterms}, '{question.get('page_id')}', {answer_embedding.get('embedding')});"
+
+				featurebase_query({"sql": sql})
+			else:
+				print("System> Got a bad vector size for the embedding.")
 		else:
 			print("bot> ", document.get('error'), document.get('answer'))
 			print("bot> ")

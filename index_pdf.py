@@ -7,6 +7,9 @@ import hashlib
 import PyPDF2
 from pdf2image import convert_from_path
 
+# embeddings
+from lib.util import embeddings
+
 # tokenizer for parsing things
 import nltk
 nltk.download('punkt')
@@ -17,34 +20,20 @@ print("Tokenizer loaded...")
 from lib.ai import ai
 
 # import database methods
-from lib.database import featurebase_query
-from lib.database import weaviate_schema, weaviate_query, weaviate_update
+from lib.database import featurebase_query, create_database
 
-# create featurebase databases
-from lib.util import create_databases
-create_databases()
+# create the databases
+databases = []
+databases.append({"name": "doc_pages", "schema": "(_id string, filename string, title string, uuids stringset)"})
+databases.append({"name": "doc_fragments", "schema": "(_id string, filename string, title string, page_num int, page_id string, fragment_num int, prev_id string, fragment string, fragment_embedding vector(768))"})
+for database in databases:
+	create_database(database.get('name'), database.get('schema'))
 
-# create a Weaviate schema
-weaviate_schema = weaviate_schema("PDFs")
-
-if weaviate_schema.get("error"):
-	print("Weaviate returned an error. Check your credentials!")
-	sys.exit()
-else:
-	print("Found Weaviate schema with class name: %s" % weaviate_schema.get('class'))	
-
-# get files to index
-dir_path = "./documents/"
-files = os.listdir(dir_path)
-print("\nDocuments Directory\n===================")
-for i, file in enumerate(files):
-    print("%s." % i, file)
-
-# operate on the PDF
-#
-# prompt for file to index
-file_number = input("Enter the number of the file to index: ")
-filename = files[int(file_number)]
+# select the file
+from lib.util import get_pdf_filename
+filename = get_pdf_filename()
+if filename:
+    print("Selected PDF:", filename)
 
 # create a pdf file object
 pdfFileObj = open("documents/%s" % filename, 'rb')
@@ -64,9 +53,9 @@ num_pages = len(pdfReader.pages)
 # images directory
 if not os.path.exists("images"):
     os.makedirs("images")
-    print(f"Directory 'images' created successfully!")
+    print(f"system> Directory 'images' created successfully!")
 else:
-    print(f"Directory 'images' already exists.")
+    print(f"system> Directory 'images' already exists.")
 
 # convert PDF
 images = convert_from_path('documents/%s' % filename)
@@ -77,14 +66,14 @@ new_dir_path = os.path.join('images', filename.split(".")[0])
 # Create the new directory if it doesn't already exist
 if not os.path.exists(new_dir_path):
     os.mkdir(new_dir_path)
-    print(f"Directory {new_dir_path} created successfully.")
+    print(f"system> Directory {new_dir_path} created successfully.")
 else:
-    print(f"Directory {new_dir_path} already exists.")
+    print(f"system> Directory {new_dir_path} already exists.")
 
 if os.path.exists(f"{new_dir_path}/page" + str(num_pages-1) + '.jpg'):
-	print("Found existing images for PDF.")
+	print("system> Found existing images for PDF.")
 else:
-	print("Exporting images for PDF.")
+	print("system> Exporting images for PDF.")
 	for i in range(len(images)):
 		# Save pages as images in the pdf (add 1 to the page index to ensure we match pages)
 		images[i].save(f'{new_dir_path}/page'+ str(i+1) +'.jpg', 'JPEG')
@@ -96,9 +85,19 @@ from google.cloud import vision
 import io
 client = vision.ImageAnnotatorClient()
 
-# start with page 1
-start_page = 1
+# start with last page or page 1
 prev_uuid = "FIRST_BAG" # used for creating a linked list in FeatureBase
+try:
+	sql = f"SELECT max(page_num) AS max_page, filename, title FROM doc_fragments WHERE filename = '{filename}' GROUP BY filename, title ORDER BY max_page DESC;"
+	results = featurebase_query({"sql": sql}).get('results')
+	start_page = results[0].get('max_page') - 1
+	title = results[0].get('title')
+	print(f"system> Found existing pages for '{title}'. Starting at page {start_page}.")
+except Exception as ex:
+	start_page = 1
+
+# stash errant characters from previous page
+word_stash = ""
 
 # loop through the pages
 for page_num in range(start_page, num_pages+1):
@@ -114,13 +113,14 @@ for page_num in range(start_page, num_pages+1):
 	texts = response.text_annotations
 
 	# output completion status
-	print("Reading page number %s of %s." % (page_num, num_pages))
+	print("system> Reading page number %s of %s." % (page_num, num_pages))
 	
 	# use the first extraction only (other entries in the list are single words)
 	try:
 		text = texts[0]
 	except:
-		print("error in detection")
+		print("system> Error in detection, likely due to a blank page.")
+		continue
 
 	# get title from the first page if we don't have it
 	if title is None and page_num == 1:
@@ -131,13 +131,13 @@ for page_num in range(start_page, num_pages+1):
 			# call the AI to get the title
 			title = ai("get_title", document).get('title')
 			if not title:
-				title = input("Couldn't find a title. Enter a title for the PDF: ")
+				title = input("system> Couldn't find a title. Enter a title for the PDF: ")
 
 	# clean up the text on which to operate
 	_text = text.description.replace("'", "").replace("\n", " ")
 
 	# create a decently cleaned up string of words of a given length
-	words = ""
+	words = word_stash
 
 	# loop over the tokenized text
 	for i, entry in enumerate(tokenizer.tokenize(_text)):
@@ -149,33 +149,27 @@ for page_num in range(start_page, num_pages+1):
 		words = words + " " + entry.replace("\n", " ")
 
 		# process words if the chunk is > 512 characters or we are on the last chunk
+		if i == len(tokenizer.tokenize(_text)) - 1 and len(words) < 20:
+			word_stash = words
+			print("system> Stashing words for next page.")
+			continue # exit loop over tokenized text
+		else:
+			word_stash = ""
+		
 		if len(words) > 512 or i == len(tokenizer.tokenize(_text)) - 1:
 			# build a page_id for the page fragment
 			page_id = "%s_%s" % (page_num, hashlib.md5(filename.encode()).hexdigest()[:8])
 
-			# create a document to send to weaviate
-			document = {
-				"filename": filename,
-				"page_id": page_id,
-				"fragment": words.strip()
-			}
-
-			# handle 500s from weaviate with a sleep and retry
-			# occurs for unknown reason...
-			for x in range(5):
-				try:
-					uuid = weaviate_update(document, "PDFs")
-					break
-				except Exception as ex:
-					print(ex)
-					time.sleep(5)
+			# embed (goodbye to weaviate retries)
+			_embeddings = embeddings([words.strip()])[0]
+			uuid = _embeddings.get('uuid')
 
 			# update featurebase doc_pages table
 			sql = "INSERT INTO doc_pages VALUES('%s', '%s', '%s', ['%s']);" % (page_id, filename, title.replace("'", ""), uuid)
 			featurebase_query({"sql": sql})
 
 			# update featurebase doc_fragments
-			sql = "INSERT INTO doc_fragments VALUES('%s', '%s', '%s', %s, '%s', %s, '%s', '%s');" % (uuid, filename, title.replace("'", ""), page_num, page_id, fragment_num, prev_uuid, words.replace("'", ""))
+			sql = "INSERT INTO doc_fragments VALUES('%s', '%s', '%s', %s, '%s', %s, '%s', '%s', %s);" % (uuid, filename, title.replace("'", ""), page_num, page_id, fragment_num, prev_uuid, words.replace("'", ""), _embeddings.get('embedding'))
 			featurebase_query({"sql": sql})
 
 			# track the previous UUID for the linked list
@@ -193,4 +187,4 @@ for page_num in range(start_page, num_pages+1):
 # close the file
 pdfFileObj.close()
 
-print("Done indexing PDF!")
+print("system> Done indexing PDF!")

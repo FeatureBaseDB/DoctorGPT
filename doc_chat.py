@@ -1,173 +1,131 @@
-import weaviate
-import config
-import pprint
+import random
 import sys
 import json
 import os
 import time
 
-from lib.util import random_string
+import config
 
-from lib.database import weaviate_schema, weaviate_query, weaviate_update, weaviate_object, featurebase_query
+from lib.util import random_string, embeddings
+
+from lib.database import featurebase_query
 from lib.ai import ai
 
-# create Weaviate schema
-weaviate_schema = weaviate_schema("QandAs")
+from collections import Counter
 
-# get files to index
-dir_path = "./documents/"
-files = os.listdir(dir_path)
-print("\nDocuments Directory\n===================")
-for i, file in enumerate(files):
-	print("%s." % i, file)
+def get_top_ranked_uuids(uuid_list):
+    # Calculate the frequency of each UUID
+    uuid_counts = Counter(uuid_list)
+    
+    # Sort UUIDs based on frequency in descending order
+    sorted_uuids = sorted(uuid_counts, key=lambda uuid: uuid_counts[uuid], reverse=True)
+    
+    # Return the top 8 ranked UUIDs
+    top_ranked_uuids = sorted_uuids[:8]
+    return top_ranked_uuids
 
-# prompt for file entry
-file_number = input("Enter the number of the file to chat with: ")
-filename = files[int(file_number)]
+# select the file
+from lib.util import get_pdf_filename
+filename = get_pdf_filename()
+if filename:
+    print("Selected PDF:", filename)
 
 # user
 username = random_string(4)
 
-def output_fragments(object, str):
-	for item in object:
-		print(str, "===============================================================================")
-		print(item.get('_additional').get("distance"))
-		print(str, "===============================================================================")
-		print(item.get('fragment'))
-		print(str, "===============================================================================")
+# build history and session
+from prompt_toolkit import PromptSession
+from prompt_toolkit.history import FileHistory
 
-from collections import defaultdict
-
-def extract_keyterms(data):
-    # Create a dictionary to store keyterms and their relevance count
-    relevance_count = defaultdict(int)
-    uuids_dict = defaultdict(set)
-
-    # Iterate over the data
-    for item in data:
-        uuids = item['uuids']
-        page_ids = item['page_ids']
-        keyterm = item['_id']
-
-        # Increment relevance count for each keyterm based on UUIDs and page IDs
-        for other_item in data:
-            if other_item is not item:
-                other_uuids = other_item['uuids']
-                other_page_ids = other_item['page_ids']
-
-                # Check if there are similar UUIDs or page IDs
-                if set(uuids) & set(other_uuids) or set(page_ids) & set(other_page_ids):
-                    relevance_count[keyterm] += 1
-                    uuids_dict[keyterm].update(uuids)
-
-    # Sort keyterms based on relevance count in descending order
-    sorted_keyterms = sorted(relevance_count.items(), key=lambda x: x[1], reverse=True)
-
-    # Sort UUIDs for each keyterm based on reference count
-    sorted_uuids_dict = {keyterm: sorted(list(uuids), key=lambda x: len(uuids_dict[keyterm]), reverse=True) for keyterm, uuids in uuids_dict.items()}
-
-    # Return relevant keyterms and sorted UUIDs
-    return [(keyterm, sorted_uuids_dict[keyterm]) for keyterm, _ in sorted_keyterms]
-
-
-def extract_most_referenced_uuids(relevant_keyterms, num_uuids=10):
-	# Create a dictionary to store the reference count for each UUID
-	uuid_count = defaultdict(int)
-
-	# Iterate over the relevant keyterms
-	for _, uuids in relevant_keyterms:
-		for uuid in uuids:
-			uuid_count[uuid] += 1
-
-	# Sort UUIDs based on their reference count in descending order
-	sorted_uuids = sorted(uuid_count.items(), key=lambda x: x[1], reverse=True)
-
-	# Retrieve the top N most referenced UUIDs
-	top_uuids = [uuid for uuid, _ in sorted_uuids[:num_uuids]]
-	return top_uuids
+history = FileHistory(".DoctorGPT")
+session = PromptSession(history=history)
 
 print("Entering conversation with %s. Use ctrl-C to end interaction." % filename)
+
 while True:
-	# get a question from the user
-
+	# get a query from the user
 	try:
-		question = input("user-%s[%s]> " % (username, filename))
+		query = session.prompt("human-%s[%s]> " % (username, filename))
+		if query == "" or query.strip() == "":
+			continue
+
 	except KeyboardInterrupt:
-		print()
-		print("bot>", "Bye!")
+		print("system>", random.choice(["Bye!", "Later!", "Nice working with you."]))
 		sys.exit()
 
-	start_time = time.time()
-	# lookup matches from weaviate's QandAs
-	weaviate_results = weaviate_query([question], "QandAs", ["question", "answer", "origin_id", "filename"], filename=filename)
+	# related uuids and keyterms
+	related_uuids = []
+	related_keyterms = []
 
+	# vector for the query
+	print("system> Embedding the query...")
+	start_time = time.time()
+	query_embedding = embeddings([query])[0]
 	end_time = time.time()
 	elapsed_time = end_time - start_time
-	print("system> Queried Weaviate for questions in:", elapsed_time, "seconds")
+	print("system> Embedded the query (locally) in:", elapsed_time, "seconds.")
 
-	# results arrays
-	qanda_results = []
-	fragment_uuids = []
-
-	# get questions from weaviate and the fragment UUIDs that go with them
-	for _result in weaviate_results:
-		qanda_results.append({"question": _result.get('question'), "answer": _result.get('answer'), "origin_id": _result.get('origin_id'), "distance": _result.get('_additional').get("distance")})
-		if _result.get('origin_id') not in fragment_uuids:
-			fragment_uuids.append(_result.get('origin_id'))
-
-	# no docs
-	if len(fragment_uuids) == 0:
-		print("bot> You need to index this document before we discuss it.")
-		sys.exit()
-
-	# grab the document fragments from FeatureBase
-	fragments = ""
-	keyterms = []
-	title = ""
-
+	# query using the query embedding, to get related questions
 	start_time = time.time()
-	# select all the keyterms that match the UUIDs we got from the questions vector store
-	sql = "SELECT * FROM doc_keyterms WHERE "
-	for i, uuid in enumerate(fragment_uuids):
-		sql = sql + "SETCONTAINS (uuids, '%s')" % uuid
-		if i < len(fragment_uuids) - 1:
-			sql = sql + " OR "
-	keyterm_results = featurebase_query({"sql": sql}).get('results')
+	sql = f"SELECT _id, question, keyterms, cosine_distance({query_embedding.get('embedding')}, question_embedding) AS distance FROM doc_questions ORDER BY distance ASC;"
+	results = featurebase_query({"sql": sql}).get('results')
 	end_time = time.time()
 	elapsed_time = end_time - start_time
-	print("system> Queried FeatureBase for keyterms in:", elapsed_time, "seconds")
+	print("system> Queried FeatureBase for related questions in:", elapsed_time, "seconds")
 
-	# extract the relevant ones
-	relevant_keyterms = extract_keyterms(keyterm_results)
+	for i, result in enumerate(results):
+		related_uuids.append(result.get('_id'))
+		for keyterm in result.get('keyterms'):
+			if keyterm not in related_keyterms:
+				related_keyterms.append(keyterm)
+		if i > 4: # just grab 5
+			break
 
-	# build the list of keyterms to move toward in weaviate (and used later in the prompt)
-	for keyterm in relevant_keyterms:
-		keyterms.append(keyterm[0])
-
-	# get related fragments to the question concept while moving toward existing keyterms
-	top_referenced_uuids = []
+	# query using the query embedding, to get related answers
 	start_time = time.time()
-	weaviate_fragments = weaviate_query([question], "PDFs", ["fragment"], keyterms, filename)
-	# output_fragments(weaviate_fragments, "with keyterms")
-	weaviate_alternates = weaviate_query([question], "PDFs", ["fragment"], [], filename)
-	# output_fragments(weaviate_alternates, "without keyterms")
-	# weaviate_fragments = weaviate_alternates
-
-
+	sql = f"SELECT _id, answer, keyterms, cosine_distance({query_embedding.get('embedding')}, answer_embedding) AS distance FROM doc_answers ORDER BY distance ASC;"
+	print(sql)
+	results = featurebase_query({"sql": sql}).get('results')
 	end_time = time.time()
 	elapsed_time = end_time - start_time
-	print("system> Queried Weaviate for fragments in:", elapsed_time, "seconds")
+	print("system> Queried FeatureBase for related answers in:", elapsed_time, "seconds")
 
-	for _fragment in weaviate_fragments:
-		_uuid = _fragment.get('_additional').get('id')
-		if _uuid not in top_referenced_uuids:
-			top_referenced_uuids.append(_uuid)
+	for i, result in enumerate(results):
+		related_uuids.append(result.get('_id'))
+		for keyterm in result.get('keyterms'):
+			if keyterm not in related_keyterms:
+				related_keyterms.append(keyterm)
+		if i > 4: # just grab 5
+			break
 
-	# get the top referenced UUIDs from keyterms in FeatureBase
-	top_uuids = extract_most_referenced_uuids(relevant_keyterms, num_uuids=10)
-	for _uuid in top_uuids:
-		if _uuid not in top_referenced_uuids:
-			top_referenced_uuids.append(_uuid)
+	start_time = time.time()
+	sql = f"SELECT uuids, tanimoto_coefficient({related_uuids}, uuids) AS distance FROM doc_keyterms ORDER BY distance;"
+	results = featurebase_query({"sql": sql}).get('results')
+	end_time = time.time()
+	elapsed_time = end_time - start_time
+	print("system> Queried FeatureBase for related documents by keyterms in:", elapsed_time, "seconds")	
+
+	for i, result in enumerate(results):
+		for uuid in result.get('uuids'):
+			related_uuids.append(uuid)
+		if i > 2: # just do a few
+			break
+	
+	start_time = time.time()
+	sql = f"SELECT _id, fragment, cosine_distance({query_embedding.get('embedding')}, fragment_embedding) AS distance FROM doc_fragments ORDER BY distance ASC;"
+	results = featurebase_query({"sql": sql}).get('results')
+	end_time = time.time()
+	elapsed_time = end_time - start_time
+	print("system> Queried FeatureBase for related documents in:", elapsed_time, "seconds")	
+
+
+	for i, result in enumerate(results):
+		related_uuids.append(result.get('_id'))
+		if i > 4: # just do a few
+			break
+
+	top_referenced_uuids = get_top_ranked_uuids(related_uuids)
+
 
 	# get the fragments from FeatureBase for those UUIDs
 	start_time = time.time()
@@ -195,7 +153,7 @@ while True:
 	print("bot> Querying GPT...")
 
 	# build the document for the AI calls
-	document = {"question": question, "text": fragments, "keyterms": keyterms, "title": title}
+	document = {"question": query, "text": fragments, "keyterms": related_keyterms, "title": title}
 
 	# call the AI
 	document = ai("ask_gptchat", document)
@@ -207,6 +165,7 @@ while True:
 	elapsed_time = end_time - start_time
 	print("system> Queried GPTChat for completion in:", elapsed_time, "seconds")
 
+	"""
 	# get keyterms (and a related question)
 	document_question = ai("gpt_keyterms", {"words": "user> %s\nbot> %s\n" % (question, document.get('answer'))})
 	
@@ -232,3 +191,4 @@ while True:
 					featurebase_query({"sql": sql})
 				sql = "INSERT INTO doc_questions VALUES('%s', '%s', '%s', '%s', %s, '%s', '', '')" % (uuid, filename, title, document_question.get('question'), document_question.get('keyterms'), "chat_%s" % username)
 				featurebase_query({"sql": sql})
+	"""

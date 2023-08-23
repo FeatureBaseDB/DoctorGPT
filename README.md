@@ -50,7 +50,7 @@ Once you have signed up, you will be taken to the dashboard. Click on "Databases
 On the Databases page, click on your new database. Copy the `Query endpoint` by clicking on the URL. Paste the URL into the `config.py` file mentioned above and DELETE the `/query/sql` path on the end, leaving a URL without a `/` on the end.
 
 ##### FeatureBase Token
-Naviagate to [https://cloud.featurebase.com/configuration/api-keys] to create a new token for use via the APIs. Copy the token secret, ignoring the ID for the token.
+Naviagate to [the configuration section](https://cloud.featurebase.com/configuration/api-keys) on FeatureBase Cloud to create a new token for use via the APIs. Copy the token secret, ignoring the ID for the token.
 
 #### Google Compute
 Go to [Google Cloud](https://console.cloud.google.com/) and signup for a cloud account. If you don't have a Google Cloud account, you will get a free credit for trying out the service.

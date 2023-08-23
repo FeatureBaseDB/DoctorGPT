@@ -1,14 +1,10 @@
 # config for DocGPT
 dev = "True"
+
+# OpenAI config
 model = "gpt-4"
-
-# tokens
 openai_token = "sk-TOKEN"
-weaviate_token = "TOKEN"
-featurebase_token = "TOKEN"
 
-# weaviate
-weaviate_endpoint = "https://aaaa-xxxx.weaviate.network"
-
-# featurebase
+# FeatureBase config
 featurebase_endpoint = "https://query.featurebase.com/v2/databases/xxxx-xxxx"
+featurebase_token = "TOKEN"

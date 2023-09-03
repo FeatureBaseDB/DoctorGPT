@@ -1,10 +1,21 @@
-1. Read the content in step 2 and build a python dictionary to answer the question in step 3.
-2. The the PDF titled "$title" contains the following:
+0. Reference the example:
+# EXAMPLE_TEXT = 
 """
+"Christopher Robin, you must shoot the balloon with your gun. Have you
+got your gun?" "Of course I have," you said. "But if I do that, it will spoil the
+balloon," you said. "But if you _don't_," said Pooh, "I shall have to let go, and that would
+spoil _me_." When he put it like this, you saw how it was, and you aimed very
+carefully at the balloon, and fired.
+"""
+# Create a python dictionary with the question and answer, plus a "word lock on" of a key words in the text in EXAMPLE_TEXT., which helps answer the question.
+# pdf_meta = {"question": "What was used and by what means allowed Winnie-the-Pooh to escape the bees?", "answer": "Winnie-the-Pooh used a balloon, and he allowed himself to escape by having Christopher Robin 
+shoot the balloon with his gun.", "word_lock_on": "shoot the balloon with your gun"}
+
+1. As in the example, read the content in step 2 and build a python dictionary to answer the question in step 3 as well as find a "word lock on" of keywords that can be found in the text in step 2.
+2. The the PDF titled "$title" contains the following text:
+TEXT = """
 $text
 """
-3. Output a python dictionary for the answer to "$question":
-# python dict example with the question and answer
-# pdf_meta = {"question": "Who is Winnie-the-Pooh?", "answer": "Winnie-the-Pooh is a fictional stuffed bear who loves honey."}
-# complete the Python dict
+3. Create a python dictionary with the question and answer, plus a "word lock on" of a key words in the text in step 2., which helps answer the question: $question
+# complete the Python dict and ensure "word_lock_on" is pulled from the TEXT in step 2.
 pdf_meta = {"question": "$question",

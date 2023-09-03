@@ -10,7 +10,7 @@ from lib.ai import ai
 
 # create the databases
 databases = []
-databases.append({"name": "doc_answers", "schema": "(_id string, filename string, title string, answer string, keyterms stringset, page_id string, answer_embedding vector(768));"})
+databases.append({"name": "doc_answers", "schema": "(_id string, filename string, title string, answer string, keyterms stringset, page_id string, answer_location int, answer_embedding vector(768));"})
 for database in databases:
 	create_database(database.get('name'), database.get('schema'))
 
@@ -38,6 +38,15 @@ for question in fb_questions:
 		sql = "DELETE FROM doc_questions WHERE _id = '%s'" % remove_uuid
 		featurebase_query({"sql": sql})
 	"""
+
+	# check if we have the answer already
+	sql = f"SELECT * FROM doc_answers WHERE _id = '{question.get('_id')}';"
+	results = featurebase_query({"sql": sql}).get('results')
+
+	if results:
+		if results[0].get('answer_location') > 0 and len(results) > 0:
+			print("system> Skipping question because it has an answer already.")
+			continue
 
 	if question.get('answer', "null") == "null" or question.get('answer', "None") == "None" or question.get('answer') == None or question.get('answer') == '':
 		print("system>", question.get('question'))
@@ -95,19 +104,35 @@ for question in fb_questions:
 			if i > 4: # just grab 5
 				break
 
-		# print(related_uuids)
-
+		# select fragments
 		for _uuid in related_uuids:
 			if len(fragment_string) < 2048:
 				sql = f"SELECT fragment FROM doc_fragments WHERE _id = '{_uuid}';"
 				results = featurebase_query({"sql": sql}).get('results')
 				fragment_string = fragment_string + results[0].get('fragment')
 
-		# print(fragment_string)
-
 		# build a document for sending to the ai
 		document = {"origin_id": uuid, "question": question.get('question'), "text": fragment_string.strip(), "title": question.get('title'), "filename": question.get('filename'), "page_id": question.get('page_id')}
 		document = ai("answer_question", document)
+
+		# use word lock to find string
+		try:
+			location = fragment_string.replace("'","").replace('"','').find(document.get('word_lock_on').replace("'", "").replace('"',''))
+			if location < 0:
+				word_lock_split = document.get('word_lock_on').replace("'", "").replace('"','').split(' ')
+				for _word in word_lock_split:
+					try:
+						location = fragment_string.find(_word)
+						if location < 0:
+							print(f"system> Failed to find {_word} in text. Scanning....")
+					except Exception as ex:
+						location = -1
+						print(f"system> Parser threw exception: {ex}.")
+				if location < 0:
+					print(f"system> Failed to find an answer lock on word. This entry should be discarded for training and it's location is set to -1.")
+		except Exception as ex:
+			print("system> Location not found: ", ex)
+			location = -1
 
 		# update if we have a good answer
 		if document.get('error') == None:
@@ -120,9 +145,10 @@ for question in fb_questions:
 			# insert if we have a good answer and vector
 			if len(answer_embedding.get('embedding')) == 768:
 				# write to doc_answers
-				sql = f"INSERT INTO doc_answers VALUES('{uuid}', '{question.get('filename')}', '{question.get('title')}', '{document.get('answer')}', {keyterms}, '{question.get('page_id')}', {answer_embedding.get('embedding')});"
+				answer = document.get('answer').replace("'", "''")
+				sql = f"INSERT INTO doc_answers VALUES('{uuid}', '{question.get('filename')}', '{question.get('title')}', '{answer}', {keyterms}, '{question.get('page_id')}', {location}, {answer_embedding.get('embedding')});"
 
-				featurebase_query({"sql": sql})
+				featurebase_query({"sql": sql}).get('explain')
 			else:
 				print("System> Got a bad vector size for the embedding.")
 		else:

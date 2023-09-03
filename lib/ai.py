@@ -209,25 +209,10 @@ def answer_question(document):
 	except Exception as ex:
 		document.setdefault('answer', None)
 
-	return document
-
-
-@model
-def measure_probdim(document):
-	# load openai key then drop it from the document
-	openai.api_key = document.get('openai_token')
-	document.pop('openai_token', None)
-
-	# substitute things
-	template = load_template("get_probdims")
-	prompt = template.substitute(document)
-
-	gpt_document = gpt3_dict_completion(prompt)
-
 	try:
-		document.setdefault('probability', gpt_document.get('probability'))
+		document.setdefault('word_lock_on', gpt_document.get('word_lock_on'))
 	except Exception as ex:
-		document.setdefault('probability', None)
+		document.setdefault('word_lock_on', None)
 
 	return document
 

@@ -84,7 +84,7 @@ while True:
 	# query using the query embedding, to get related answers
 	start_time = time.time()
 	sql = f"SELECT _id, answer, keyterms, cosine_distance({query_embedding.get('embedding')}, answer_embedding) AS distance FROM doc_answers ORDER BY distance ASC;"
-	print(sql)
+
 	results = featurebase_query({"sql": sql}).get('results')
 	end_time = time.time()
 	elapsed_time = end_time - start_time
@@ -98,6 +98,7 @@ while True:
 		if i > 4: # just grab 5
 			break
 
+	# query the related UUID keywords overlap
 	start_time = time.time()
 	sql = f"SELECT uuids, tanimoto_coefficient({related_uuids}, uuids) AS distance FROM doc_keyterms ORDER BY distance;"
 	results = featurebase_query({"sql": sql}).get('results')
@@ -111,6 +112,7 @@ while True:
 		if i > 2: # just do a few
 			break
 	
+	# query the document for a match to the query (we don't need the fragment here)
 	start_time = time.time()
 	sql = f"SELECT _id, fragment, cosine_distance({query_embedding.get('embedding')}, fragment_embedding) AS distance FROM doc_fragments ORDER BY distance ASC;"
 	results = featurebase_query({"sql": sql}).get('results')
@@ -124,16 +126,36 @@ while True:
 		if i > 4: # just do a few
 			break
 
+	# rank all the document UUIDs for all searches
 	top_referenced_uuids = get_top_ranked_uuids(related_uuids)
 
-
-	# get the fragments from FeatureBase for those UUIDs
+	# get the related files, if any
 	start_time = time.time()
-	sql = "SELECT * FROM doc_fragments WHERE "
+	sql = "SELECT DISTINCT filename AS filenames FROM doc_fragments WHERE "
 	for i, uuid in enumerate(top_referenced_uuids):
 		sql = sql + "_id = '%s'" % uuid
 		if i < len(top_referenced_uuids) - 1:
 			sql = sql + " OR "
+
+	file_query = featurebase_query({"sql": sql}).get('results')
+	end_time = time.time()
+	elapsed_time = end_time - start_time
+	for _filename in file_query:
+		if not filename in _filename.get('filenames'):
+			print(f"system> Found a document called '{_filename.get('filenames')}', which may be related.")
+	
+	print("system> Queried FeatureBase for related files in:", elapsed_time, "seconds")
+	print("system> Answering query without related files context...")
+
+	# get the fragments from FeatureBase for those UUIDs
+	start_time = time.time()
+	sql = f"SELECT * FROM doc_fragments WHERE filename = '{filename}' AND ("
+	for i, uuid in enumerate(top_referenced_uuids):
+		sql = sql + f"_id = '{uuid}'"
+		if i < len(top_referenced_uuids) - 1:
+			sql = sql + " OR "
+		else:
+			sql = sql + ");"
 
 	fragment_results = featurebase_query({"sql": sql}).get('results')
 	end_time = time.time()
@@ -160,6 +182,7 @@ while True:
 	
 
 	# print the answer
+	print(f"system> User entered, `{query}`.")
 	print("bot> " + document.get('answer'))
 	end_time = time.time()
 	elapsed_time = end_time - start_time

@@ -19,6 +19,10 @@ def random_string(size=6, chars=string.ascii_letters + string.digits):
 def embeddings(string_array):
 
 	# idiots be idioting
+	# supress or handle the parallel errors from HF tokenizers
+	# Set the environment variable
+	os.environ["TOKENIZERS_PARALLELISM"] = "true"
+
 	# supresses 'load INSTRUCTOR_Transformer' & 'max_seq_length 512' outputs
 	with contextlib.redirect_stdout(None):
 

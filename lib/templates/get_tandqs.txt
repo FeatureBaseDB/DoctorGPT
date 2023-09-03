@@ -1,4 +1,4 @@
-1. Determine the TOP four (4) keyterms and related question from a portion/fragment of PDF and output a Python dictionary with the information.
+1. Read the contents in step 2. and determine the TOP four (4) keyterms AND a related question. Then, following the sub steps in 3. a., b. c. and d., output a Python dictionary with the information.
 2. The page fragment of the PDF contains:
 """
 $words

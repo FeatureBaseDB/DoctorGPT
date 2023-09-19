@@ -10,7 +10,7 @@ bot> Querying GPT...
 bot> My name is DoctorGPT and I'm an AI agent designed to help you organize and manage PDF documents. Just like Doc Brown, I'm here to help you navigate the future of PDFs.
 ```
 
-The repository uses tools such as [PyPDF2](https://pypi.org/project/PyPDF2/) and [pdf2image](https://pypi.org/project/pdf2image/) for PDF processing, [Google Vision](https://cloud.google.com/vision) for text extraction from images, [nltk](https://www.nltk.org/) for text fragment/chunk extraction, [Instructor Large](https://huggingface.co/hkunlp/instructor-large) for local embeddings, and [FeatureBase](https://featurebase.com/) for vector simimlarity, back of the book indexing and graph traversal of terms, questions and document fragments.
+The repository uses tools such as [PyPDF2](https://pypi.org/project/PyPDF2/) and [pdf2image](https://pypi.org/project/pdf2image/) for PDF processing, [Google Vision](https://cloud.google.com/vision) for text extraction from images, [nltk](https://www.nltk.org/) for text fragment/chunk extraction, [Instructor Large](https://huggingface.co/hkunlp/instructor-large) for local embeddings, and [FeatureBase](https://featurebase.com/) for vector similarity, back of the book indexing and graph traversal of terms, questions and document fragments.
 
 The project is installed, configured and run locally from the command line. You will need a [Google Cloud](https://cloud.google.com/) account with [Vision enabled](https://cloud.google.com/vision/docs/before-you-begin), an [OpenAI account](https://openai.com), and a [FeatureBase cloud](https://cloud.featurebase.com) account to run the code.
 

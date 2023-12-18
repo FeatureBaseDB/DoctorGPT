@@ -14,7 +14,7 @@ The repository uses tools such as [PyPDF2](https://pypi.org/project/PyPDF2/) and
 
 The project is installed, configured and run locally from the command line. You will need a [Google Cloud](https://cloud.google.com/) account with [Vision enabled](https://cloud.google.com/vision/docs/before-you-begin), an [OpenAI account](https://openai.com), and a [FeatureBase cloud](https://cloud.featurebase.com) account to run the code.
 
-![Doc Brown](https://github.com/FeatureBaseDB/DoctorGPT/blob/main/doc.jpg)
+![Mad Scientist](https://github.com/FeatureBaseDB/DoctorGPT/blob/main/doc.png)
 
 ## Theory of Operation
 The process of indexing a document is divided into three main steps:
